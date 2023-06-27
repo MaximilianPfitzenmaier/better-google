@@ -8,14 +8,18 @@ from urllib.parse import urljoin
 from urllib.robotparser import RobotFileParser
 from bs4 import BeautifulSoup
 from nltk.stem import WordNetLemmatizer
+from nltk.tokenize import word_tokenize, sent_tokenize
+from rake_nltk import Rake
 
 nltk.download('punkt')
 nltk.download('wordnet')
+nltk.download('stopwords')
 
 
 # starting frontier
 frontier = [
-    'https://hoelderlinturm.de/english/', 'https://www.tuebingen.de/en/'
+    'https://uni-tuebingen.de/en/',
+    # 'https://hoelderlinturm.de/english/', 'https://www.tuebingen.de/en/'
     # # reichen solche guides?
     # 'https://www.my-stuwe.de/en/', 'https://guide.michelin.com/en/de/baden-wurttemberg/tbingen/restaurants',
     # # reichen solche datenbanken?
@@ -148,7 +152,7 @@ def create_web_page_object(page_id, url, title, keywords, description, internal_
     - id (int): The ID of the web page.
     - url (str): The URL of the web page.
     - title (str): The title of the web page.
-    - keywords (str): The keywords from the keyword meta tag.
+    - keywords (list): The keywords generated from the content.
     - description (str): The description from the description meta tag.
     - internal_links (list): A list of internal links (URLs within the same domain).
     - external_links (list): A list of external links (URLs outside the current domain).
@@ -221,19 +225,32 @@ def get_page_title(soup):
     return soup.title.string if soup.title else None
 
 
-def get_keywords(soup):
+def get_keywords(soup, content):
     """
-    Extracts the keywords from the keyword meta tag of a web page from the given BeautifulSoup object.
+    Extracts the keywords from the content using the RAKE algorithm.
 
     Parameters:
-    - soup (BeautifulSoup): The BeautifulSoup object representing the parsed HTML content.
+    - content (str): The text content to extract keywords from.
 
     Returns:
-    - str or None: The keywords from the meta tag if found, otherwise None.
+    - list: The extracted keywords as a list of single words.
     """
-    keywords = soup.find('meta', attrs={'name': 'keywords'})
-    # TODO else Logic
-    return keywords['content'] if keywords else None
+    # Create an instance of the Rake object
+    r = Rake()
+    r.extract_keywords_from_text(content)
+    ranked_phrases_with_scores = r.get_ranked_phrases_with_scores()
+
+    # Filter out phrases with more than one word
+    single_words = [phrase for score, phrase in ranked_phrases_with_scores if len(
+        phrase.split()) == 1]
+
+    # Deduplicate keywords (case-insensitive)
+    unique_keywords = list(set(map(str.lower, single_words)))
+
+    # Limit to the top 20 single words
+    keywords = unique_keywords[:20]
+
+    return keywords
 
 
 def get_description(soup):
@@ -285,7 +302,18 @@ def get_page_content(soup):
     - str: The lemmatized and normalized content of the web page.
     """
     # Get the remaining content
-    content = soup.getText()
+    content = str(soup)
+
+    #! lets try our own regex the getText() function returns bullshit
+    # Remove script tags and their content
+    content = re.sub(
+        r'<script[^>]*>[\s\S]*?<\/script>', ' ', content)
+
+    # Remove HTML comments
+    content = re.sub(r'<!--[\s\S]*?-->', ' ', content)
+
+    # Remove HTML tags
+    content = re.sub(r'<.*?>', ' ', content)
 
     # Remove special characters (except "." and "@") and lowercase the content
     content = re.sub(r'[^\w\s.@]', '', content).lower()
@@ -293,17 +321,19 @@ def get_page_content(soup):
     # Normalize German characters to English equivalents
     content = normalize_german_chars(content)
 
+    # Tokenize the content
+    tokens = word_tokenize(content)
+
     # Lemmatize the content
     lemmatizer = WordNetLemmatizer()
     lemmatized_content = []
-    tokens = nltk.word_tokenize(content)
     for token in tokens:
         lemma = lemmatizer.lemmatize(token)
         lemmatized_content.append(lemma)
 
     # Convert the lemmatized content back to a string
     lemmatized_content_str = ' '.join(lemmatized_content)
-
+    # return test
     return lemmatized_content_str
 
 
@@ -367,15 +397,17 @@ def crawler(url, visited_urls, page_id):
 
             # Extract the title, keywords, description, internal/external links, content
             title = get_page_title(soup)
-            keywords = get_keywords(soup)
             description = get_description(soup)
             internal_links = get_internal_external_links(soup)[0]
             external_links = get_internal_external_links(soup)[1]
             content = get_page_content(soup)
+            keywords = get_keywords(soup, content)
+            in_links = 0
+            out_links = len(external_links)
 
             # Create the web page object
             web_page = create_web_page_object(
-                page_id, url, title, keywords, description, internal_links, external_links, [], [], content)
+                page_id, url, title, keywords, description, internal_links, external_links, in_links, out_links, content)
 
             #! Print the details of the web page
             print_web_page(web_page)
