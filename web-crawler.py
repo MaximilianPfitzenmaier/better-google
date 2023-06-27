@@ -1,8 +1,8 @@
 # imports
 import requests
 import re
-import numpy as np
 import nltk
+from langdetect import detect
 from time import sleep
 from urllib.parse import urljoin
 from urllib.robotparser import RobotFileParser
@@ -15,11 +15,23 @@ nltk.download('wordnet')
 
 # starting frontier
 frontier = [
-    # TODO Fill with url's
-    'https://www.tuebingen.de/en/',
-    'https://uni-tuebingen.de/en/',
-    'https://www.tuebingen-info.de/',
-    'https://www.tuebingen.de/en/',
+    'https://hoelderlinturm.de/english/', 'https://www.tuebingen.de/en/'
+    # # reichen solche guides?
+    # 'https://www.my-stuwe.de/en/', 'https://guide.michelin.com/en/de/baden-wurttemberg/tbingen/restaurants',
+    # # reichen solche datenbanken?
+    # 'https://uni-tuebingen.de/en/facilities/central-institutions/university-sports-center/home/',
+    # 'https://uni-tuebingen.de/en/', 'https://civis.eu/en/about-civis/universities/eberhard-karls-universitat-tubingen', 'https://tuebingenresearchcampus.com/', 'https://is.mpg.de/'
+    # # noch mehr guides, decken aber gut ab - zumal eh die einzelnen seiten idr nur auf deutsch sind
+    # 'https://www.tripadvisor.com/Attractions-g198539-Activities-Tubingen_Baden_Wurttemberg.html',
+    # 'https://www.medizin.uni-tuebingen.de/en-de/startseite', 'https://apps.allianzworldwidecare.com/poi/hospital-doctor-and-health-practitioner-finder?PROVTYPE=PRACTITIONERS&TRANS=Doctors%20and%20Health%20Practitioners%20in%20Tuebingen,%20Germany&CON=Europe&COUNTRY=Germany&CITY=Tuebingen&choice=en', 'https://www.yelp.com/search?cflt=physicians&find_loc=T%C3%BCbingen%2C+Baden-W%C3%BCrttemberg%2C+Germany',
+    # 'https://cyber-valley.de/', 'https://www.tuebingen.mpg.de/84547/cyber-valley',
+    # 'https://tuebingen.ai/', 'https://www.eml-unitue.de/',
+    # 'https://en.wikipedia.org/wiki/T%C3%BCbingen', 'https://wikitravel.org/en/T%C3%BCbingen',
+    # 'https://www.bahnhof.de/en/tuebingen-hbf',
+    # # politics
+    # # geograpy
+    # 'https://www.engelvoelkers.com/en-de/properties/rent-apartment/baden-wurttemberg/tubingen-kreis/',
+    # 'https://integreat.app/tuebingen/en/news/tu-news', 'https://tunewsinternational.com/category/news-in-english/'  # news
 ]
 
 # init page id
@@ -50,14 +62,14 @@ def print_web_page(web_page):
     """
     print(f"ID: {web_page['id']}")
     print(f"URL: {web_page['url']}")
-    # print(f"Title: {web_page['title']}")
-    # print(f"Keywords: {web_page['keywords']}")
-    # print(f"Description: {web_page['description']}")
-    # print(f"Internal Links: {web_page['internal_links']}")
-    # print(f"External Links: {web_page['external_links']}")
-    # print(f"In Links: {web_page['in_links']}")
-    # print(f"Out Links: {web_page['out_links']}")
-    # print(f"Content: {web_page['content']}")
+    print(f"Title: {web_page['title']}")
+    print(f"Keywords: {web_page['keywords']}")
+    print(f"Description: {web_page['description']}")
+    print(f"Internal Links: {web_page['internal_links']}")
+    print(f"External Links: {web_page['external_links']}")
+    print(f"In Links: {web_page['in_links']}")
+    print(f"Out Links: {web_page['out_links']}")
+    print(f"Content: {web_page['content']}")
     print("--------------------")
 
 
@@ -107,8 +119,10 @@ def is_page_language_english(soup):
     # Check if the lang attribute is set to 'en'
     if html_tag and html_tag.has_attr('lang') and (html_tag['lang'].startswith('en') or html_tag['lang'].startswith('us')):
         return True
-
-    return False
+    elif detect(soup.getText()).startswith('en'):
+        return True
+    else:
+        return False
 
 
 def is_url_visited(url, visited_urls):
@@ -262,7 +276,7 @@ def get_internal_external_links(soup):
 
 def get_page_content(soup):
     """
-     Extracts the plain text content of a web page from the given BeautifulSoup object.
+    Extracts the plain text content of a web page from the given BeautifulSoup object.
 
     Parameters:
     - soup (BeautifulSoup): The BeautifulSoup object representing the parsed HTML content.
@@ -292,6 +306,27 @@ def get_page_content(soup):
 
     return lemmatized_content_str
 
+
+def add_internal_links_to_frontier(url, internal_links):
+    """
+    Adds all the internal links to the frontier array.
+    Parameters:
+    - url (BeautifulSoup): The BeautifulSoup url.
+    - internal_links (list):  A list of visited internal URLs
+
+    Returns:
+    - None
+    """
+
+    for link in internal_links:
+        if link.startswith('/') or link.startswith(url):
+            if link.startswith('/'):
+                link = urljoin(url, link)
+            frontier.append(link)
+
+
+# Databse Functions
+# TODO Databse functions here ...
 
 def crawler(url, visited_urls, page_id):
     """
@@ -354,12 +389,9 @@ def crawler(url, visited_urls, page_id):
             # Delay before crawling the next page
             sleep(crawl_delay)
 
-            #! Recursively crawl the internal links
-            # for link in internal_links:
-            #     if link.startswith('/') or link.startswith(url):
-            #         if link.startswith('/'):
-            #             link = urljoin(url, link)
-            #         frontier.append(link)
+            #! Add all the internal links to the frontier
+            # add_internal_links_to_frontier(url, internal_links)
+
         else:
             print(f"Not an English page: {url}")
     else:
