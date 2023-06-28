@@ -85,6 +85,7 @@ class Database:
             return self.cursor.fetchone()
         except Exception as err:
             print(err.args[0])
+            self.connection.rollback()
             return
 
     def push_to_frontier(self, url):

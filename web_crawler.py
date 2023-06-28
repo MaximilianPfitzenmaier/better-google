@@ -79,7 +79,7 @@ class Crawler:
         # print(f"External Links: {web_page['external_links']}")
         # print(f"In Links: {web_page['in_links']}")
         # print(f"Out Links: {web_page['out_links']}")
-        print(f"Content: {web_page['content']}")
+        # print(f"Content: {web_page['content']}")
         print("--------------------")
 
     def add_internal_links_to_frontier(self, url, internal_links):
@@ -173,7 +173,9 @@ class Crawler:
 
                     # Add all the internal links to the frontier
                     # for int_link in internal_links:
-                    # self.db.push_to_frontier(int_link)
+                    #     self.db.push_to_frontier(int_link)
+                    # for ext_link in external_links:
+                    #     self.db.push_to_frontier(ext_link)
 
                 else:
                     print(f"Not an English page: {url}")
