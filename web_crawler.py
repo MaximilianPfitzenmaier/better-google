@@ -12,48 +12,52 @@ from nltk.tokenize import word_tokenize, sent_tokenize
 from rake_nltk import Rake
 from database import Database
 
-class Crawler():
+
+class Crawler:
     initial_frontier = [
-    'https://hoelderlinturm.de/english/', 'https://www.tuebingen.de/en/'
-    # reichen solche guides?
-    'https://www.my-stuwe.de/en/', 'https://guide.michelin.com/en/de/baden-wurttemberg/tbingen/restaurants',
-    # reichen solche datenbanken?
-    'https://uni-tuebingen.de/en/facilities/central-institutions/university-sports-center/home/',
-    'https://uni-tuebingen.de/en/', 'https://civis.eu/en/about-civis/universities/eberhard-karls-universitat-tubingen', 'https://tuebingenresearchcampus.com/', 'https://is.mpg.de/'
-    # noch mehr guides, decken aber gut ab - zumal eh die einzelnen seiten idr nur auf deutsch sind
-    'https://www.tripadvisor.com/Attractions-g198539-Activities-Tubingen_Baden_Wurttemberg.html',
-    'https://www.medizin.uni-tuebingen.de/en-de/startseite', 'https://apps.allianzworldwidecare.com/poi/hospital-doctor-and-health-practitioner-finder?PROVTYPE=PRACTITIONERS&TRANS=Doctors%20and%20Health%20Practitioners%20in%20Tuebingen,%20Germany&CON=Europe&COUNTRY=Germany&CITY=Tuebingen&choice=en', 'https://www.yelp.com/search?cflt=physicians&find_loc=T%C3%BCbingen%2C+Baden-W%C3%BCrttemberg%2C+Germany',
-    'https://cyber-valley.de/', 'https://www.tuebingen.mpg.de/84547/cyber-valley',
-    'https://tuebingen.ai/', 'https://www.eml-unitue.de/',
-    'https://en.wikipedia.org/wiki/T%C3%BCbingen', 'https://wikitravel.org/en/T%C3%BCbingen',
-    'https://www.bahnhof.de/en/tuebingen-hbf',
-    # politics
-    # geograpy
-    'https://www.engelvoelkers.com/en-de/properties/rent-apartment/baden-wurttemberg/tubingen-kreis/',
-    'https://integreat.app/tuebingen/en/news/tu-news', 'https://tunewsinternational.com/category/news-in-english/'  # news
+        'https://hoelderlinturm.de/english/',
+        'https://www.tuebingen.de/en/'
+        # reichen solche guides?
+        'https://www.my-stuwe.de/en/',
+        'https://guide.michelin.com/en/de/baden-wurttemberg/tbingen/restaurants',
+        # reichen solche datenbanken?
+        'https://uni-tuebingen.de/en/facilities/central-institutions/university-sports-center/home/',
+        'https://uni-tuebingen.de/en/',
+        'https://civis.eu/en/about-civis/universities/eberhard-karls-universitat-tubingen',
+        'https://tuebingenresearchcampus.com/',
+        'https://is.mpg.de/'
+        # noch mehr guides, decken aber gut ab - zumal eh die einzelnen seiten idr nur auf deutsch sind
+        'https://www.tripadvisor.com/Attractions-g198539-Activities-Tubingen_Baden_Wurttemberg.html',
+        'https://www.medizin.uni-tuebingen.de/en-de/startseite',
+        'https://apps.allianzworldwidecare.com/poi/hospital-doctor-and-health-practitioner-finder?PROVTYPE=PRACTITIONERS&TRANS=Doctors%20and%20Health%20Practitioners%20in%20Tuebingen,%20Germany&CON=Europe&COUNTRY=Germany&CITY=Tuebingen&choice=en',
+        'https://www.yelp.com/search?cflt=physicians&find_loc=T%C3%BCbingen%2C+Baden-W%C3%BCrttemberg%2C+Germany',
+        'https://cyber-valley.de/',
+        'https://www.tuebingen.mpg.de/84547/cyber-valley',
+        'https://tuebingen.ai/',
+        'https://www.eml-unitue.de/',
+        'https://en.wikipedia.org/wiki/T%C3%BCbingen',
+        'https://wikitravel.org/en/T%C3%BCbingen',
+        'https://www.bahnhof.de/en/tuebingen-hbf',
+        # politics
+        # geograpy
+        'https://www.engelvoelkers.com/en-de/properties/rent-apartment/baden-wurttemberg/tubingen-kreis/',
+        'https://integreat.app/tuebingen/en/news/tu-news',
+        'https://tunewsinternational.com/category/news-in-english/',  # news
     ]
-    frontier = []
     # our blacklist
     blacklist = ['https://www.tripadvisor.com/', 'https://www.yelp.com/']
 
-    # cache to store processed content ( key: URL | value: web_page_object )
-    cache = {}
-    # TODO Also store this in databse
-
-    # Initialize the list of visited URLs
-    visited_urls = []
-    # TODO also store this list in database
-
-    db = Database()
+    db = None
 
     def __init__(self, db) -> None:
         self.db = db
-
-        # TODO set frontier to latest state
-        self.frontier = self.initial_frontier
         nltk.download('punkt')
         nltk.download('wordnet')
         nltk.download('stopwords')
+        # If the frontier is empty, we load it with our initial frontier
+        if self.db.check_frontier_empty():
+            for link in self.initial_frontier:
+                self.db.push_to_frontier(link)
 
     # Helper Functions
     def print_web_page(self, web_page):
@@ -77,7 +81,6 @@ class Crawler():
         # print(f"Out Links: {web_page['out_links']}")
         print(f"Content: {web_page['content']}")
         print("--------------------")
-    
 
     def add_internal_links_to_frontier(self, url, internal_links):
         """
@@ -91,13 +94,12 @@ class Crawler():
         """
 
         for link in internal_links:
-            if link.startswith('/') or link.startswith(url):
-                if link.startswith('/'):
+            if link.startswith("/") or link.startswith(url):
+                if link.startswith("/"):
                     link = urljoin(url, link)
                 self.frontier.append(link)
 
-
-    def crawler(self, url, visited_urls):
+    def crawl_url(self, url):
         """
         Crawls a web page and extracts relevant information.
 
@@ -109,9 +111,9 @@ class Crawler():
         Returns:
         - None
         """
-        if urljoin(url, '/') not in self.blacklist: 
+        if urljoin(url, '/') not in self.blacklist:
             # Check if the URL has already been visited
-            if is_url_visited(url, visited_urls):
+            if self.db.is_url_visited(url)[0]:
                 print(f"Already visited: {url}")
                 return
 
@@ -125,7 +127,7 @@ class Crawler():
 
             # Make an HTTP GET request to the URL
             response = requests.get(url)
-        
+
             # Check if the request is successful (status code 200)
             if response.status_code == 200 and allowed:
                 # Use BeautifulSoup to parse the HTML content
@@ -133,7 +135,6 @@ class Crawler():
 
                 # only crawl the page content, if the content is english
                 if is_page_language_english(soup, url):
-
                     # Extract the title, keywords, description, internal/external links, content
                     title = get_page_title(soup)
                     description = get_description(soup)
@@ -146,40 +147,50 @@ class Crawler():
 
                     # Create the web page object
                     web_page = create_web_page_object(
-                        url, title, keywords, description, internal_links, external_links, in_links, out_links, content)
-                    
+                        url,
+                        title,
+                        keywords,
+                        description,
+                        internal_links,
+                        external_links,
+                        in_links,
+                        out_links,
+                        content,
+                    )
+
                     # Save to the database
-                    entry = self.db.insert(web_page)
+                    entry = self.db.add_document(web_page)
                     web_page['id'] = entry[0]
 
                     #! Print the details of the web page
                     self.print_web_page(web_page)
-                    
-                    # Add the URL to the visited URLs list
-                    visited_urls.append(url)
 
-                    # Add the URL to the cache
-                    self.cache[url] = web_page
+                    # Add the URL to the visited URLs list
+                    self.db.add_visited_url(web_page['id'], url)
 
                     # Delay before crawling the next page
                     sleep(crawl_delay)
 
-                    #! Add all the internal links to the frontier
-                    # add_internal_links_to_frontier(url, internal_links)
+                    # Add all the internal links to the frontier
+                    # for int_link in internal_links:
+                    # self.db.push_to_frontier(int_link)
 
                 else:
                     print(f"Not an English page: {url}")
             else:
-                print(f"Error crawling: {url} | Status: {response.status_code} | Allowed: {allowed} ")
+                print(
+                    f"Error crawling: {url} | Status: {response.status_code} | Allowed: {allowed} "
+                )
         else:
             print(f"Domain blacklisted: {urljoin(url, '/')}")
 
     # Start crawling all URL's in the frontier
     def crawl(self):
-        while len(self.frontier) != 0:
-            url = self.frontier.pop()
-            self.crawler(url, self.visited_urls)
-
+        while True:
+            next_url = self.db.pop_frontier()
+            if next_url is None:
+                break
+            self.crawl_url(next_url)
 
 
 def normalize_german_chars(text):
@@ -232,7 +243,11 @@ def is_page_language_english(soup, url):
     match = re.search(pattern, url)
 
     # Check if the lang attribute is set to 'en'
-    if html_tag and html_tag.has_attr('lang') and (html_tag['lang'].startswith('en') or html_tag['lang'].startswith('us')):
+    if (
+        html_tag
+        and html_tag.has_attr('lang')
+        and (html_tag['lang'].startswith('en') or html_tag['lang'].startswith('us'))
+    ):
         return True
     elif match:
         return True
@@ -242,22 +257,18 @@ def is_page_language_english(soup, url):
         return False
 
 
-def is_url_visited(url, visited_urls):
-    """
-    Checks if a URL has already been visited.
-
-    Parameters:
-    - url (str): The URL to check.
-    - visited_urls (list): A list of visited URLs.
-
-    Returns:
-    - bool: True if the URL has already been visited, False otherwise.
-    """
-    return url in visited_urls
-
-
 # Crawler Functions
-def create_web_page_object(url, title, keywords, description, internal_links, external_links, in_links, out_links, content):
+def create_web_page_object(
+    url,
+    title,
+    keywords,
+    description,
+    internal_links,
+    external_links,
+    in_links,
+    out_links,
+    content,
+):
     """
     Creates a web page object.
 
@@ -287,7 +298,7 @@ def create_web_page_object(url, title, keywords, description, internal_links, ex
         'external_links': external_links,
         'in_links': in_links,
         'out_links': out_links,
-        'content': content
+        'content': content,
     }
 
 
@@ -354,8 +365,11 @@ def get_keywords(soup, content):
     ranked_phrases_with_scores = r.get_ranked_phrases_with_scores()
 
     # Filter out phrases with more than one word
-    single_words = [phrase for score, phrase in ranked_phrases_with_scores if len(
-        phrase.split()) == 1]
+    single_words = [
+        phrase
+        for score, phrase in ranked_phrases_with_scores
+        if len(phrase.split()) == 1
+    ]
 
     # Deduplicate keywords (case-insensitive)
     unique_keywords = list(set(map(str.lower, single_words)))
@@ -419,12 +433,10 @@ def get_page_content(soup):
 
     #! lets try our own regex the getText() function returns bullshit
     # Remove script tags and their content
-    content = re.sub(
-        r'<script[^>]*>[\s\S]*?<\/script>', ' ', content)
-    
-     # Remove style tags and their content
-    content = re.sub(
-        r'<style[^>]*>[\s\S]*?<\/style>', ' ', content)
+    content = re.sub(r'<script[^>]*>[\s\S]*?<\/script>', ' ', content)
+
+    # Remove style tags and their content
+    content = re.sub(r'<style[^>]*>[\s\S]*?<\/style>', ' ', content)
 
     # Remove HTML comments
     content = re.sub(r'<!--[\s\S]*?-->', ' ', content)

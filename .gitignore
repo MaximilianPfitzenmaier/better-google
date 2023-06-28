@@ -4,6 +4,7 @@
 #better-google files
 /database.txt
 /frontier.json
+settings.json
 
 ### Linux ###
 *~
