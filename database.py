@@ -56,7 +56,7 @@ class Database():
         Parameters:
         - element (dict): A dict of a new document entry.
         """
-        sql = "INSERT INTO documents VALUES (default,%s,%s,%s,%s,%s,%s,%s,%s,%s)"
+        sql = "INSERT INTO documents VALUES (default,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING *"
         self.cursor.execute(sql, (
             element.get('url'),
             element.get('title', None),
@@ -70,6 +70,7 @@ class Database():
             ))
         print(self.cursor.statusmessage)
         self.connection.commit()
+        return self.cursor.fetchone()
     
     def create_table(self):
         """

@@ -1,18 +1,9 @@
 from database import Database
+from web_crawler import Crawler
 
 
 if __name__ == '__main__':
     db = Database()
-    test_document = {
-        "url": "testurl",
-        "title": "testtitle",
-        "keywords": [],
-        "description": "",
-        "internal_links": [],
-        # "external_links": [],
-        # "in_links": [],
-        # "out_links": [],
-        # "content": ""
-    }
-    db.insert(test_document)
+    crawler = Crawler(db)
+    crawler.crawl()
     print(db.query("SELECT * FROM documents"))

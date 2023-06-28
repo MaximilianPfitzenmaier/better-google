@@ -10,14 +10,10 @@ from bs4 import BeautifulSoup
 from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import word_tokenize, sent_tokenize
 from rake_nltk import Rake
+from database import Database
 
-nltk.download('punkt')
-nltk.download('wordnet')
-nltk.download('stopwords')
-
-
-# starting frontier
-frontier = [
+class Crawler():
+    initial_frontier = [
     'https://hoelderlinturm.de/english/', 'https://www.tuebingen.de/en/'
     # reichen solche guides?
     'https://www.my-stuwe.de/en/', 'https://guide.michelin.com/en/de/baden-wurttemberg/tbingen/restaurants',
@@ -35,45 +31,155 @@ frontier = [
     # geograpy
     'https://www.engelvoelkers.com/en-de/properties/rent-apartment/baden-wurttemberg/tubingen-kreis/',
     'https://integreat.app/tuebingen/en/news/tu-news', 'https://tunewsinternational.com/category/news-in-english/'  # news
-]
+    ]
+    frontier = []
+    # our blacklist
+    blacklist = ['https://www.tripadvisor.com/', 'https://www.yelp.com/']
 
-# init page id
-page_id = 0
+    # cache to store processed content ( key: URL | value: web_page_object )
+    cache = {}
+    # TODO Also store this in databse
 
-# our blacklist
-blacklist = ['https://www.tripadvisor.com/', 'https://www.yelp.com/']
+    # Initialize the list of visited URLs
+    visited_urls = []
+    # TODO also store this list in database
 
-# cache to store processed content ( key: URL | value: web_page_object )
-cache = {}
-# TODO Also store this in databse
+    db = Database()
 
-# Initialize the list of visited URLs
-visited_urls = []
-# TODO also store this list in database
+    def __init__(self, db) -> None:
+        self.db = db
+
+        # TODO set frontier to latest state
+        self.frontier = self.initial_frontier
+        nltk.download('punkt')
+        nltk.download('wordnet')
+        nltk.download('stopwords')
+
+    # Helper Functions
+    def print_web_page(self, web_page):
+        """
+        Prints all details of the crawled web page.
+
+        Parameters:
+        - web_page (disctionary): The web page object.
+
+        Returns:
+        - None.
+        """
+        print(f"ID: {web_page['id']}")
+        print(f"URL: {web_page['url']}")
+        print(f"Title: {web_page['title']}")
+        print(f"Keywords: {web_page['keywords']}")
+        print(f"Description: {web_page['description']}")
+        # print(f"Internal Links: {web_page['internal_links']}")
+        # print(f"External Links: {web_page['external_links']}")
+        # print(f"In Links: {web_page['in_links']}")
+        # print(f"Out Links: {web_page['out_links']}")
+        print(f"Content: {web_page['content']}")
+        print("--------------------")
+    
+
+    def add_internal_links_to_frontier(self, url, internal_links):
+        """
+        Adds all the internal links to the frontier array.
+        Parameters:
+        - url (BeautifulSoup): The BeautifulSoup url.
+        - internal_links (list):  A list of visited internal URLs
+
+        Returns:
+        - None
+        """
+
+        for link in internal_links:
+            if link.startswith('/') or link.startswith(url):
+                if link.startswith('/'):
+                    link = urljoin(url, link)
+                self.frontier.append(link)
 
 
-# Helper Functions
-def print_web_page(web_page):
-    """
-    Prints all details of the crawled web page.
+    def crawler(self, url, visited_urls):
+        """
+        Crawls a web page and extracts relevant information.
 
-    Parameters:
-    - web_page (disctionary): The web page object.
+        Parameters:
+        - url (str): The URL of the web page to crawl.
+        - visited_urls (list): A list of visited URLs.
+        - id (int): The web page ID starting with 0
 
-    Returns:
-    - None.
-    """
-    print(f"ID: {web_page['id']}")
-    print(f"URL: {web_page['url']}")
-    print(f"Title: {web_page['title']}")
-    print(f"Keywords: {web_page['keywords']}")
-    print(f"Description: {web_page['description']}")
-    # print(f"Internal Links: {web_page['internal_links']}")
-    # print(f"External Links: {web_page['external_links']}")
-    # print(f"In Links: {web_page['in_links']}")
-    # print(f"Out Links: {web_page['out_links']}")
-    print(f"Content: {web_page['content']}")
-    print("--------------------")
+        Returns:
+        - None
+        """
+        if urljoin(url, '/') not in self.blacklist: 
+            # Check if the URL has already been visited
+            if is_url_visited(url, visited_urls):
+                print(f"Already visited: {url}")
+                return
+
+            # Set the desired user agent for your crawler
+            user_agent = 'TuebingenExplorer/1.0'
+
+            # Check if crawling is allowed and if a delay is set
+            allowed_delay = is_crawling_allowed(url, user_agent)
+            allowed = allowed_delay[0]
+            crawl_delay = allowed_delay[1] if allowed_delay[1] else 0.5
+
+            # Make an HTTP GET request to the URL
+            response = requests.get(url)
+        
+            # Check if the request is successful (status code 200)
+            if response.status_code == 200 and allowed:
+                # Use BeautifulSoup to parse the HTML content
+                soup = BeautifulSoup(response.content, 'html.parser')
+
+                # only crawl the page content, if the content is english
+                if is_page_language_english(soup, url):
+
+                    # Extract the title, keywords, description, internal/external links, content
+                    title = get_page_title(soup)
+                    description = get_description(soup)
+                    internal_links = get_internal_external_links(soup)[0]
+                    external_links = get_internal_external_links(soup)[1]
+                    content = get_page_content(soup)
+                    keywords = get_keywords(soup, content)
+                    in_links = []
+                    out_links = []
+
+                    # Create the web page object
+                    web_page = create_web_page_object(
+                        url, title, keywords, description, internal_links, external_links, in_links, out_links, content)
+                    
+                    # Save to the database
+                    entry = self.db.insert(web_page)
+                    web_page['id'] = entry[0]
+
+                    #! Print the details of the web page
+                    self.print_web_page(web_page)
+                    
+                    # Add the URL to the visited URLs list
+                    visited_urls.append(url)
+
+                    # Add the URL to the cache
+                    self.cache[url] = web_page
+
+                    # Delay before crawling the next page
+                    sleep(crawl_delay)
+
+                    #! Add all the internal links to the frontier
+                    # add_internal_links_to_frontier(url, internal_links)
+
+                else:
+                    print(f"Not an English page: {url}")
+            else:
+                print(f"Error crawling: {url} | Status: {response.status_code} | Allowed: {allowed} ")
+        else:
+            print(f"Domain blacklisted: {urljoin(url, '/')}")
+
+    # Start crawling all URL's in the frontier
+    def crawl(self):
+        while len(self.frontier) != 0:
+            url = self.frontier.pop()
+            self.crawler(url, self.visited_urls)
+
 
 
 def normalize_german_chars(text):
@@ -151,7 +257,7 @@ def is_url_visited(url, visited_urls):
 
 
 # Crawler Functions
-def create_web_page_object(page_id, url, title, keywords, description, internal_links, external_links, in_links, out_links, content):
+def create_web_page_object(url, title, keywords, description, internal_links, external_links, in_links, out_links, content):
     """
     Creates a web page object.
 
@@ -172,7 +278,7 @@ def create_web_page_object(page_id, url, title, keywords, description, internal_
     """
 
     return {
-        'id': page_id,
+        # 'id': page_id,
         'url': url,
         'title': title,
         'keywords': keywords,
@@ -346,103 +452,3 @@ def get_page_content(soup):
     lemmatized_content_str = ' '.join(lemmatized_content)
     # return test
     return lemmatized_content_str
-
-
-def add_internal_links_to_frontier(url, internal_links):
-    """
-    Adds all the internal links to the frontier array.
-    Parameters:
-    - url (BeautifulSoup): The BeautifulSoup url.
-    - internal_links (list):  A list of visited internal URLs
-
-    Returns:
-    - None
-    """
-
-    for link in internal_links:
-        if link.startswith('/') or link.startswith(url):
-            if link.startswith('/'):
-                link = urljoin(url, link)
-            frontier.append(link)
-
-
-# Databse Functions
-# TODO Databse functions here ...
-
-def crawler(url, visited_urls, page_id):
-    """
-    Crawls a web page and extracts relevant information.
-
-    Parameters:
-    - url (str): The URL of the web page to crawl.
-    - visited_urls (list): A list of visited URLs.
-    - id (int): The web page ID starting with 0
-
-    Returns:
-    - None
-    """
-    if urljoin(url, '/') not in blacklist: 
-        # Check if the URL has already been visited
-        if is_url_visited(url, visited_urls):
-            print(f"Already visited: {url}")
-            return
-
-        # Set the desired user agent for your crawler
-        user_agent = 'TuebingenExplorer/1.0'
-
-        # Check if crawling is allowed and if a delay is set
-        allowed_delay = is_crawling_allowed(url, user_agent)
-        allowed = allowed_delay[0]
-        crawl_delay = allowed_delay[1] if allowed_delay[1] else 0.5
-
-        # Make an HTTP GET request to the URL
-        response = requests.get(url)
-    
-        # Check if the request is successful (status code 200)
-        if response.status_code == 200 and allowed:
-            # Use BeautifulSoup to parse the HTML content
-            soup = BeautifulSoup(response.content, 'html.parser')
-
-            # only crawl the page content, if the content is english
-            if is_page_language_english(soup, url):
-
-                # Extract the title, keywords, description, internal/external links, content
-                title = get_page_title(soup)
-                description = get_description(soup)
-                internal_links = get_internal_external_links(soup)[0]
-                external_links = get_internal_external_links(soup)[1]
-                content = get_page_content(soup)
-                keywords = get_keywords(soup, content)
-                in_links = 0
-                out_links = len(external_links)
-
-                # Create the web page object
-                web_page = create_web_page_object(
-                    page_id, url, title, keywords, description, internal_links, external_links, in_links, out_links, content)
-
-                #! Print the details of the web page
-                print_web_page(web_page)
-                
-                # Add the URL to the visited URLs list
-                visited_urls.append(url)
-
-                # Add the URL to the cache
-                cache[url] = web_page
-
-                # Delay before crawling the next page
-                sleep(crawl_delay)
-
-                #! Add all the internal links to the frontier
-                # add_internal_links_to_frontier(url, internal_links)
-
-            else:
-                print(f"Not an English page: {url}")
-        else:
-            print(f"Error crawling: {url} | Status: {response.status_code} | Allowed: {allowed} ")
-    else:
-        print(f"Domain blacklisted: {urljoin(url, '/')}")
-
-# Start crawling all URL's in the frontier
-for url in frontier:
-    crawler(url, visited_urls, page_id)
-    page_id += 1
