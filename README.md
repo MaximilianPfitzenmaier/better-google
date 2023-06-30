@@ -7,8 +7,9 @@ To connect, some parameters need to be supplied. Create a local database.txt fil
 
 # Frontier
 
-Will be an array consisting of urls that we plan to visit.
-Resolve the following topics into urls we can use for a good initial frontier.
+Exists in a database table and can be kept between executions.
+
+The initial frontier is made up of websites about that cover roughly the following topics:
 
 - attractions
 - food and drinks
@@ -44,4 +45,5 @@ Have an exclusion list of stuff we don't want to visit at all.
 
 # Query processing
 
-- Stemming + stop word removal
+The query gets turned to lowercase and special characters are removed as well as german special characters normalized. Stopwords are also removed.
+The prepared query is then used to gather the index based on whether any word from the query appears in the documents content, description, title or url.
