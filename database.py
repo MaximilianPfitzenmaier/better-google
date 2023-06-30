@@ -71,16 +71,16 @@ class Database:
                 (
                     element.get("url"),
                     element.get("title", None),
-                    element.get("norm_title", None),
+                    element.get("normalized_title", None),
                     element.get("keywords", None),
                     element.get("description", None),
-                    element.get("norm_description", None),
+                    element.get("normalized_description", None),
                     element.get("internal_links", None),
                     element.get("external_links", None),
                     element.get("in_links", None),
                     element.get("out_links", None),
                     element.get("content", None),
-                    element.get("img", None),
+                    element.get("img", None)
 
                 ),
             )
