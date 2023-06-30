@@ -100,15 +100,21 @@ class Database:
         - url (string): The url to add to the frontier.
         """
         sql = """
-            INSERT INTO frontier VALUES (%s)
+            INSERT INTO frontier 
+            SELECT %s
+            WHERE NOT EXISTS (
+                SELECT 1 
+                FROM frontier
+                WHERE url = %s
+                UNION ALL
+                SELECT 1
+                FROM visited_urls
+                WHERE url = %s )
         """
-        try:
-            self.cursor.execute(sql, (url,))
-            print(self.cursor.statusmessage)
-            self.connection.commit()
-        except Exception as err:
-            print(err.args[0])
-            self.connection.rollback()
+
+        self.cursor.execute(sql, (url, url, url))
+        print(self.cursor.statusmessage)
+        self.connection.commit()
 
     def pop_frontier(self):
         """
@@ -148,24 +154,24 @@ class Database:
         self.connection.commit()
         return True if res is None else False
 
-    def is_url_visited(self, url):
-        """
-        Queries the visited_urls table and checks whether the url has been visited before.
-
-        Parameters:
-        - url (string): The url to check.
-
-        Returns:
-        - Tuple of (bool, timestamp)
-        """
-        sql = """
-            SELECT last_visited
-            FROM visited_urls
-            WHERE url = %s
-        """
-        self.cursor.execute(sql, (url,))
-        res = self.cursor.fetchone()
-        return (False, None) if res is None else (True, res[0])
+    # def is_url_visited(self, url):
+    #     """
+    #     Queries the visited_urls table and checks whether the url has been visited before.
+    #
+    #     Parameters:
+    #     - url (string): The url to check.
+    #
+    #     Returns:
+    #     - Tuple of (bool, timestamp)
+    #     """
+    #     sql = """
+    #         SELECT last_visited
+    #         FROM visited_urls
+    #         WHERE url = %s
+    #     """
+    #     self.cursor.execute(sql, (url,))
+    #     res = self.cursor.fetchone()
+    #     return (False, None) if res is None else (True, res[0])
 
     def add_visited_url(self, doc_id, url):
         """

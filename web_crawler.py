@@ -119,9 +119,9 @@ class Crawler:
         """
         if urljoin(url, '/') not in self.blacklist:
             # Check if the URL has already been visited
-            if self.db.is_url_visited(url)[0]:
-                print(f"Already visited: {url}")
-                return
+            #if self.db.is_url_visited(url)[0]:
+            #    print(f"Already visited: {url}")
+            #    return
 
             # Set the desired user agent for your crawler
             user_agent = 'TuebingenExplorer/1.0'
