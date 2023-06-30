@@ -26,7 +26,7 @@ class Crawler:
         'https://uni-tuebingen.de/en/',
         'https://civis.eu/en/about-civis/universities/eberhard-karls-universitat-tubingen',
         'https://tuebingenresearchcampus.com/',
-        'https://is.mpg.de/'
+        'https://is.mpg.de/',
         # noch mehr guides, decken aber gut ab - zumal eh die einzelnen seiten idr nur auf deutsch sind
         'https://www.tripadvisor.com/Attractions-g198539-Activities-Tubingen_Baden_Wurttemberg.html',
         'https://www.medizin.uni-tuebingen.de/en-de/startseite',
@@ -180,7 +180,7 @@ class Crawler:
                     web_page['id'] = entry[0]
 
                     #! Print the details of the web page
-                    self.print_web_page(web_page)
+                    # self.print_web_page(web_page)
 
                     # Add the URL to the visited URLs list
                     self.db.add_visited_url(web_page['id'], url)
@@ -189,8 +189,9 @@ class Crawler:
                     sleep(crawl_delay)
 
                     # Add all the internal links to the frontier
-                    # for int_link in internal_links:
-                    #     self.db.push_to_frontier(int_link)
+                    for int_link in internal_links:
+                        if int_link is not url or int_link is not url[:-1]:
+                            self.db.push_to_frontier(int_link)
                     # for ext_link in external_links:
                     #     self.db.push_to_frontier(ext_link)
 
@@ -349,6 +350,7 @@ def is_crawling_allowed(url, user_agent):
     robots_url = urljoin(base_url, 'robots.txt')
     print(base_url)
     print(robots_url)
+    print(url)
 
     # Fetch the Robots.txt file
     robot = RobotFileParser()
@@ -525,12 +527,17 @@ def get_internal_external_links(soup, url):
     external_links = []
     for link in soup.find_all('a'):
         href = link.get('href')
-        if href:
+        if href and not href.startswith('mailto:') and not href.startswith('tel:') and not href.startswith('javascript:') and not href.endswith('.jpg') and not href.endswith('.webp'):
             if href.startswith('http') or href.startswith('https'):
-                external_links.append(base_url + href)
-            else:
-                internal_links.append(base_url + href)
-    return (internal_links, external_links)
+                external_link = base_url + href
+                if external_link not in external_links and is_page_language_english(soup, external_link):
+                    external_links.append(external_link)
+            elif not href.startswith('#'):
+                internal_link = base_url + href
+                if internal_link not in internal_links and is_page_language_english(soup, internal_link):
+                    internal_links.append(internal_link)
+
+    return (list(set(internal_links)), list(set(external_links)))
 
 
 def get_page_content(soup):
