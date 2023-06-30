@@ -54,6 +54,50 @@ class Database:
         self.cursor.execute(query)
         return self.cursor.fetchall()
 
+    def fetch_docs_by_id(self, doc_ids):
+        """
+        Fetch all the documents according to the list of ids given.
+
+        Parameters:
+        - doc_ids (int[]): An array of ids of documents.
+
+        Returns:
+        The list of documents gathered from our database.
+        """
+        sql = """
+            SELECT id, url, title, description, img
+            FROM documents
+            WHERE id = ANY(%s)
+        """
+        self.cursor.execute(sql, (doc_ids,))
+        print(self.cursor.statusmessage)
+        return self.cursor.fetchall()
+
+    def fetch_index(self, search_words):
+        """
+        Fetch all the indices of documents which contain our search_words somewhere.
+
+        Parameters:
+        - search_words (str[]): An array of strings to search for
+
+        Returns:
+        The list of document ids that match our search.
+        """
+        sql = """
+            WITH search_table AS (
+                SELECT '%%' || unnest(%s) || '%%'
+            )
+            SELECT id
+            FROM documents
+            WHERE content ILIKE ANY (SELECT * FROM search_table)
+                OR norm_title ILIKE ANY (SELECT * FROM search_table)
+                OR norm_description ILIKE ANY (SELECT * FROM search_table)
+                OR url ILIKE ANY (SELECT * FROM search_table)
+        """
+        self.cursor.execute(sql, (search_words,))
+        print(self.cursor.statusmessage)
+        return [r[0] for r in self.cursor.fetchall()]
+
     def add_document(self, element):
         """
         Inserts a new entry into our documents table. It must be from a new url. Otherwise it gets rejected.
@@ -80,8 +124,7 @@ class Database:
                     element.get("in_links", None),
                     element.get("out_links", None),
                     element.get("content", None),
-                    element.get("img", None)
-
+                    element.get("img", None),
                 ),
             )
             print(self.cursor.statusmessage)
@@ -154,24 +197,24 @@ class Database:
         self.connection.commit()
         return True if res is None else False
 
-    # def is_url_visited(self, url):
-    #     """
-    #     Queries the visited_urls table and checks whether the url has been visited before.
-    #
-    #     Parameters:
-    #     - url (string): The url to check.
-    #
-    #     Returns:
-    #     - Tuple of (bool, timestamp)
-    #     """
-    #     sql = """
-    #         SELECT last_visited
-    #         FROM visited_urls
-    #         WHERE url = %s
-    #     """
-    #     self.cursor.execute(sql, (url,))
-    #     res = self.cursor.fetchone()
-    #     return (False, None) if res is None else (True, res[0])
+    def is_url_visited(self, url):
+        """
+        Queries the visited_urls table and checks whether the url has been visited before.
+
+        Parameters:
+        - url (string): The url to check.
+
+        Returns:
+        - Tuple of (bool, timestamp)
+        """
+        sql = """
+            SELECT last_visited
+            FROM visited_urls
+            WHERE url = %s
+        """
+        self.cursor.execute(sql, (url,))
+        res = self.cursor.fetchone()
+        return (False, None) if res is None else (True, res[0])
 
     def add_visited_url(self, doc_id, url):
         """
