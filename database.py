@@ -64,7 +64,7 @@ class Database:
         Returns:
         The new entry or None if an error was encountered.
         """
-        sql = "INSERT INTO documents VALUES (default,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING *"
+        sql = "INSERT INTO documents VALUES (default,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING *"
         try:
             self.cursor.execute(
                 sql,
@@ -80,6 +80,8 @@ class Database:
                     element.get("in_links", None),
                     element.get("out_links", None),
                     element.get("content", None),
+                    element.get("img", None),
+
                 ),
             )
             print(self.cursor.statusmessage)
