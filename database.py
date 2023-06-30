@@ -64,15 +64,17 @@ class Database:
         Returns:
         The new entry or None if an error was encountered.
         """
-        sql = "INSERT INTO documents VALUES (default,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING *"
+        sql = "INSERT INTO documents VALUES (default,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING *"
         try:
             self.cursor.execute(
                 sql,
                 (
                     element.get("url"),
                     element.get("title", None),
+                    element.get("norm_title", None),
                     element.get("keywords", None),
                     element.get("description", None),
+                    element.get("norm_description", None),
                     element.get("internal_links", None),
                     element.get("external_links", None),
                     element.get("in_links", None),
@@ -188,16 +190,19 @@ class Database:
         """
         sql = """
             CREATE TABLE IF NOT EXISTS documents (
-                id              SERIAL PRIMARY KEY,
-                url             TEXT NOT NULL UNIQUE,
-                title           TEXT,
-                keywords        TEXT[],
-                description     TEXT,
-                internal_links  TEXT[],
-                external_links  TEXT[],
-                in_links        TEXT[],
-                out_links       TEXT[],
-                content         TEXT
+                id               SERIAL PRIMARY KEY,
+                url              TEXT NOT NULL UNIQUE,
+                title            TEXT,
+                norm_title       TEXT,
+                keywords         TEXT[],
+                description      TEXT,
+                norm_description TEXT,
+                internal_links   TEXT[],
+                external_links   TEXT[],
+                in_links         TEXT[],
+                out_links        TEXT[],
+                content          TEXT,
+                img              BYTEA
             )
         """
         self.cursor.execute(sql)
