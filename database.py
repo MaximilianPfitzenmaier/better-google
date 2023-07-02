@@ -20,6 +20,7 @@ class Database:
         self.create_documents_table()
         self.create_visited_urls_table()
         self.create_frontier_table()
+        self.create_sitemap_table()
         self.connection.commit()
         print('Database tables ready.')
 
@@ -31,16 +32,16 @@ class Database:
         Connect to the PostgreSQL database server
         """
 
-        with open('database.txt', 'r') as f:
-            db = f.read().splitlines()
+        # with open('database.txt', 'r') as f:
+        #     db = f.read().splitlines()
 
         self.connection = psycopg2.connect(
-            host=db[0],
-            database=db[1],
-            user=db[2],
-            password=db[3],
+            host="localhost",
+            database="postgres",
+            user="postgres",
+            password="root",
         )
-        f.close()
+        # f.close()
         self.cursor = self.connection.cursor()
 
     def query(self, query):
@@ -235,6 +236,44 @@ class Database:
             print(err.args[0])
             self.connection.rollback()
 
+    def get_sitemap_from_domain(self, url):
+        """
+        Queries the visited_urls table and checks whether the url has been visited before.
+
+        Parameters:
+        - url (string): The url to check.
+
+        Returns:
+        - Tuple of (bool, timestamp)
+        """
+        sql = """
+            SELECT links
+            FROM sitemap
+            WHERE url = %s
+        """
+        self.cursor.execute(sql, (url,))
+        res = self.cursor.fetchone()
+        return (False, None) if res is None else (True, res[0])
+
+    def add_url_to_domains_sitemap(self, domain, url):
+        """
+        Inserts the url into the visited url table with the current timestamp.
+
+        Parameters:
+        - doc_id (int): The id of the doc.
+        - url (string): The url to insert.
+        """
+        sql = """
+            INSERT INTO sitemap VALUES (%s, %s)
+        """
+        try:
+            self.cursor.execute(sql, (domain, url))
+            print(self.cursor.statusmessage)
+            self.connection.commit()
+        except Exception as err:
+            print(err.args[0])
+            self.connection.rollback()
+
     def create_documents_table(self):
         """
         Creates the documents table in our database if it does not exist already.
@@ -273,6 +312,19 @@ class Database:
         self.cursor.execute(sql)
         print(self.cursor.statusmessage)
 
+    def create_sitemap_table(self):
+        """
+        Creates the table with visited urls and their timestamps in our database if it does not exist already.
+        """
+        sql = """
+            CREATE TABLE IF NOT EXISTS sitemap (
+                url     TEXT UNIQUE,
+                links   TEXT[]  
+            )
+        """
+        self.cursor.execute(sql)
+        print(self.cursor.statusmessage)
+
     def create_frontier_table(self):
         """
         Creates the table for our frontier which should hold the latest state of our crawling process.
@@ -293,6 +345,7 @@ class Database:
             DROP TABLE IF EXISTS frontier;
             DROP TABLE IF EXISTS visited_urls;
             DROP TABLE IF EXISTS documents;
+            DROP TABLE IF EXISTS sitemap;
         """
         self.cursor.execute(sql)
         print(self.cursor.statusmessage)
