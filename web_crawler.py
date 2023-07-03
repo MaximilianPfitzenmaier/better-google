@@ -175,22 +175,31 @@ class Crawler:
                                 print(f'SITEMAP {domain_internal_links}')
 
                             except Exception as e:
+                                domain_internal_links = []
                                 print(
                                     f"Exception occurred while getting sitemap: {host} | {e}")
 
                             internal_links = get_internal_external_links(
-                                soup, domain_internal_links, domain_external_links, full_host, self.blacklist)[0]
-
+                                soup, domain_internal_links, domain_external_links, full_host, self)[0]
+                            
                             try:
-                                domain_internal_links = self.db.add_url_to_domains_sitemap(
-                                    full_host, domain_internal_links)
+                                # update the domain_internal_links
+                                self.db.update_domain_sitemap(self, full_host, domain_internal_links)
 
+                            except:
+                                 print(
+                                    f"Exception occurred while getting sitemap: {host} | {e}")
+                            
+                            try:   
+                                domain_internal_links = self.db.add_url_to_domains_sitemap(
+                                        full_host, domain_internal_links)
+                                
                             except Exception as e:
                                 print(
                                     f"Exception occurred while pushing to sitemap: {host} | {e}")
 
                             external_links = get_internal_external_links(
-                                soup, domain_internal_links, domain_external_links, full_host, self.blacklist)[1]
+                                soup, domain_internal_links, domain_external_links, full_host, self)[1]
 
                             content = get_page_content(soup)
 
@@ -234,9 +243,9 @@ class Crawler:
                             sleep(crawl_delay)
 
                             # Add all the internal links to the frontier
-                            for int_link in domain_internal_links:
-                                if int_link is not url or int_link is not url[:-1]:
-                                    self.db.push_to_frontier(int_link)
+                            # for int_link in domain_internal_links:
+                            #     if int_link is not url or int_link is not url[:-1]:
+                            #         self.db.push_to_frontier(int_link)
                             # for ext_link in external_links:
                             #     self.db.push_to_frontier(ext_link)
 
@@ -602,7 +611,7 @@ def has_tuebingen_content(url):
         print(f"Exception occurred while crawling: {url} | {e}")
 
 
-def get_internal_external_links(soup, domain_internal_links, domain_external_links, host, blacklist):
+def get_internal_external_links(soup, domain_internal_links, domain_external_links, host, self ):
     """
     Extracts the internal and external links from a web page from the given BeautifulSoup object.
 
@@ -625,25 +634,27 @@ def get_internal_external_links(soup, domain_internal_links, domain_external_lin
         if href and not href.startswith('mailto:') and not href.startswith('tel:') and not href.startswith('javascript:') and not href.endswith('.jpg') and not href.endswith('.webp'):
             if href.startswith('http'):
                 external_link = href
-                if external_link not in external_links and base_url not in blacklist and is_page_language_english(soup, external_link):
+                if external_link not in external_links and base_url not in self.blacklist and is_page_language_english(soup, external_link):
                     external_links.append(external_link)
                     domain_external_links.append(external_link)
             elif not href.startswith('#'):
                 internal_link = base_url[:-1] + href
                 print(f'START CHECK INTERNAL: {internal_link}')
 
-                if is_page_language_english(soup, internal_link):
-                    if base_url not in blacklist:
-                        # add all internal links to web_page_property
-                        internal_links.append(internal_link)
-
-                        # check if we should push the url to the frontier
-                        # Add the URL to the visited URLs list
+                if base_url not in self.blacklist:
+                    # add all internal links to web_page_property
+                    internal_links.append(internal_link)
+                    # Add the URL to the somain sitemap
+                    domain_internal_links.append(internal_link)
+                    # check if we should push the url to the frontier
+                    if is_page_language_english(soup, internal_link):
                         if internal_link not in domain_internal_links:
                             if has_tuebingen_content(internal_link):
-                                domain_internal_links.append(internal_link)
+                                # frontier push here 
+                                print('PUSH TO FRONTIER')
+                                self.db.push_to_frontier(internal_link)
 
-                print('END CHECK')
+                    print('END CHECK')
     print(f'INTERNAL DOMAIN LINKS ARRAY: {domain_internal_links}')
     return (list(set(internal_links)), list(set(external_links)),  list(set(domain_internal_links)),  list(set(domain_external_links)))
 

@@ -236,7 +236,7 @@ class Database:
             print(err.args[0])
             self.connection.rollback()
 
-    def get_sitemap_from_domain(self, url):
+    def get_sitemap_from_domain(self, domain):
         """
         Queries the visited_urls table and checks whether the url has been visited before.
 
@@ -251,16 +251,28 @@ class Database:
             FROM sitemap
             WHERE url = %s
         """
-        self.cursor.execute(sql, (url,))
+        self.cursor.execute(sql, (domain,))
         res = self.cursor.fetchone()
         return (False, None) if res is None else (True, res[0])
 
+
+    def update_domain_sitemap(self, domain, domain_internal_links):
+        
+        sql = """
+            DELETE FROM sitemap 
+            WHERE url = %s
+        """
+        self.cursor.execute(sql, (domain))
+        self.add_url_to_domains_sitemap(self, domain, domain_internal_links)
+        print(self.cursor.statusmessage)
+        return self.cursor.fetchall()
+        
     def add_url_to_domains_sitemap(self, domain, url):
         """
         Inserts the url into the visited url table with the current timestamp.
 
         Parameters:
-        - doc_id (int): The id of the doc.
+        - domain (string): The domain of the doc.
         - url (string): The url to insert.
         """
         sql = """
@@ -314,7 +326,7 @@ class Database:
 
     def create_sitemap_table(self):
         """
-        Creates the table with visited urls and their timestamps in our database if it does not exist already.
+        Creates the table with all checked internal links from a domain.
         """
         sql = """
             CREATE TABLE IF NOT EXISTS sitemap (
