@@ -32,16 +32,16 @@ class Database:
         Connect to the PostgreSQL database server
         """
 
-        # with open('database.txt', 'r') as f:
-        #     db = f.read().splitlines()
+        with open('database.txt', 'r') as f:
+            db = f.read().splitlines()
 
         self.connection = psycopg2.connect(
-            host="localhost",
-            database="postgres",
-            user="postgres",
-            password="root",
+            host=db[0],
+            database=db[1],
+            user=db[2],
+            password=db[3],
         )
-        # f.close()
+        f.close()
         self.cursor = self.connection.cursor()
 
     def query(self, query):
@@ -71,7 +71,7 @@ class Database:
             WHERE id = ANY(%s)
         """
         self.cursor.execute(sql, (doc_ids,))
-        print(self.cursor.statusmessage)
+        # print(self.cursor.statusmessage)
         return self.cursor.fetchall()
 
     def fetch_index(self, search_words):
@@ -96,7 +96,7 @@ class Database:
                 OR url ILIKE ANY (SELECT * FROM search_table)
         """
         self.cursor.execute(sql, (search_words,))
-        print(self.cursor.statusmessage)
+        # print(self.cursor.statusmessage)
         return [r[0] for r in self.cursor.fetchall()]
 
     def add_document(self, element):
@@ -128,11 +128,11 @@ class Database:
                     element.get("img", None),
                 ),
             )
-            print(self.cursor.statusmessage)
+            # print(self.cursor.statusmessage)
             self.connection.commit()
             return self.cursor.fetchone()
         except Exception as err:
-            print(err.args[0])
+            # print(err.args[0])
             self.connection.rollback()
             return
 
@@ -157,7 +157,7 @@ class Database:
         """
 
         self.cursor.execute(sql, (url, url, url))
-        print(self.cursor.statusmessage)
+        # print(self.cursor.statusmessage)
         self.connection.commit()
 
     def pop_frontier(self):
@@ -177,7 +177,7 @@ class Database:
             RETURNING url
         """
         self.cursor.execute(sql)
-        print(self.cursor.statusmessage)
+        # print(self.cursor.statusmessage)
         res = self.cursor.fetchone()
         self.connection.commit()
         return res if res is None else res[0]
@@ -193,7 +193,7 @@ class Database:
             SELECT * FROM frontier LIMIT 1
         """
         self.cursor.execute(sql)
-        print(self.cursor.statusmessage)
+        # print(self.cursor.statusmessage)
         res = self.cursor.fetchone()
         self.connection.commit()
         return True if res is None else False
@@ -230,10 +230,10 @@ class Database:
         """
         try:
             self.cursor.execute(sql, (doc_id, url))
-            print(self.cursor.statusmessage)
+            # print(self.cursor.statusmessage)
             self.connection.commit()
         except Exception as err:
-            print(err.args[0])
+            # print(err.args[0])
             self.connection.rollback()
 
     def get_sitemap_from_domain(self, domain):
@@ -253,37 +253,40 @@ class Database:
         """
         self.cursor.execute(sql, (domain,))
         res = self.cursor.fetchone()
-        return (False, None) if res is None else (True, res[0])
+        return res[0] if res else []
 
+    def update_domain_sitemap(self, domain, domain_links):
 
-    def update_domain_sitemap(self, domain, domain_internal_links):
-        
-        sql = """
-            DELETE FROM sitemap 
-            WHERE url = %s
-        """
-        self.cursor.execute(sql, (domain))
-        self.add_url_to_domains_sitemap(self, domain, domain_internal_links)
-        print(self.cursor.statusmessage)
-        return self.cursor.fetchall()
-        
-    def add_url_to_domains_sitemap(self, domain, url):
+        try:
+            sql = """
+                DELETE FROM sitemap 
+                WHERE url = %s
+            """
+            self.cursor.execute(sql, (domain,))
+            self.add_url_to_domains_sitemap(domain, domain_links)
+            # print(self.cursor.statusmessage)
+        except:
+            self.add_url_to_domains_sitemap(domain, domain_links)
+
+    def add_url_to_domains_sitemap(self, domain, domain_links):
         """
         Inserts the url into the visited url table with the current timestamp.
 
         Parameters:
         - domain (string): The domain of the doc.
-        - url (string): The url to insert.
+        - domain_links (list): The url list to insert.
         """
         sql = """
             INSERT INTO sitemap VALUES (%s, %s)
         """
         try:
-            self.cursor.execute(sql, (domain, url))
-            print(self.cursor.statusmessage)
+            # Convert the list to a comma-separated string
+            domain_links_str = "{" + ", ".join(domain_links) + "}"
+            self.cursor.execute(sql, (domain, domain_links_str))
+            # print(self.cursor.statusmessage)
             self.connection.commit()
         except Exception as err:
-            print(err.args[0])
+            # print(err.args[0])
             self.connection.rollback()
 
     def create_documents_table(self):
@@ -308,7 +311,7 @@ class Database:
             )
         """
         self.cursor.execute(sql)
-        print(self.cursor.statusmessage)
+        # print(self.cursor.statusmessage)
 
     def create_visited_urls_table(self):
         """
@@ -322,11 +325,11 @@ class Database:
             )
         """
         self.cursor.execute(sql)
-        print(self.cursor.statusmessage)
+        # print(self.cursor.statusmessage)
 
     def create_sitemap_table(self):
         """
-        Creates the table with all checked internal links from a domain.
+        Creates the table for all checked internal links from a domain.
         """
         sql = """
             CREATE TABLE IF NOT EXISTS sitemap (
@@ -335,7 +338,7 @@ class Database:
             )
         """
         self.cursor.execute(sql)
-        print(self.cursor.statusmessage)
+        # print(self.cursor.statusmessage)
 
     def create_frontier_table(self):
         """
@@ -347,7 +350,7 @@ class Database:
             )
         """
         self.cursor.execute(sql)
-        print(self.cursor.statusmessage)
+        # print(self.cursor.statusmessage)
 
     def drop_all_tables(self):
         """
@@ -360,5 +363,5 @@ class Database:
             DROP TABLE IF EXISTS sitemap;
         """
         self.cursor.execute(sql)
-        print(self.cursor.statusmessage)
+        # print(self.cursor.statusmessage)
         self.connection.commit()

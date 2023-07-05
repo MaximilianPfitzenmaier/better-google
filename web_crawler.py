@@ -13,39 +13,40 @@ from nltk.tokenize import word_tokenize, sent_tokenize
 from nltk.corpus import stopwords
 from rake_nltk import Rake
 from database import Database
+import time
 
 
 class Crawler:
     initial_frontier = [
         # 'https://uni-tuebingen.deen/',
         # 'https://uni-tuebingen.de/en/facilities/central-institutions/university-sports-center/home/',
-        # 'https://hoelderlinturm.de/english/',
+        'https://hoelderlinturm.de/english/',
         'https://www.tuebingen.de/en/',
-
-        # 'https://www.my-stuwe.de/en/',
+        'https://hoelderlinturm.de/english/',
+        'https://www.my-stuwe.de/en/',
         # # reichen solche datenbanken?
 
         # 'https://uni-tuebingen.de/en/',
-        # 'https://civis.eu/en/about-civis/universities/eberhard-karls-universitat-tubingen',
-        # 'https://tuebingenresearchcampus.com/',
-        # 'https://is.mpg.de/',
+        'https://civis.eu/en/about-civis/universities/eberhard-karls-universitat-tubingen',
+        'https://tuebingenresearchcampus.com/en/',
+        'https://is.mpg.de/en/',
         # # noch mehr guides, decken aber gut ab - zumal eh die einzelnen seiten idr nur auf deutsch sind
-        # 'https://www.tripadvisor.com/Attractions-g198539-Activities-Tubingen_Baden_Wurttemberg.html',
-        # 'https://www.medizin.uni-tuebingen.de/en-de/startseite',
-        # 'https://apps.allianzworldwidecare.com/poi/hospital-doctor-and-health-practitioner-finder?PROVTYPE=PRACTITIONERS&TRANS=Doctors%20and%20Health%20Practitioners%20in%20Tuebingen,%20Germany&CON=Europe&COUNTRY=Germany&CITY=Tuebingen&choice=en',
-        # 'https://www.yelp.com/search?cflt=physicians&find_loc=T%C3%BCbingen%2C+Baden-W%C3%BCrttemberg%2C+Germany',
-        # 'https://cyber-valley.de/',
+        'https://www.tripadvisor.com/Attractions-g198539-Activities-Tubingen_Baden_Wurttemberg.html',
+        # 'https://www.medizin.uni-tuebingen.de/en-de/',
+        'https://apps.allianzworldwidecare.com/poi/hospital-doctor-and-health-practitioner-finder?PROVTYPE=PRACTITIONERS&TRANS=Doctors%20and%20Health%20Practitioners%20in%20Tuebingen,%20Germany&CON=Europe&COUNTRY=Germany&CITY=Tuebingen&choice=en',
+        'https://www.yelp.com/search?cflt=physicians&find_loc=T%C3%BCbingen%2C+Baden-W%C3%BCrttemberg%2C+Germany',
+        'https://cyber-valley.de/',
         # 'https://www.tuebingen.mpg.de/84547/cyber-valley',
-        # 'https://tuebingen.ai/',
-        # 'https://www.eml-unitue.de/',
-        # 'https://en.wikipedia.org/wiki/T%C3%BCbingen',
-        # 'https://wikitravel.org/en/T%C3%BCbingen',
-        # 'https://www.bahnhof.de/en/tuebingen-hbf',
+        'https://tuebingen.ai/',
+        'https://www.bahnhof.de/en/tuebingen-hbf',
+        'https://en.wikipedia.org/wiki/T%C3%BCbingen',
+        'https://www.eml-unitue.de/',
+        'https://wikitravel.org/en/T%C3%BCbingen',
         # # politics
         # # geograpy
-        # 'https://www.engelvoelkers.com/en-de/properties/rent-apartment/baden-wurttemberg/tubingen-kreis/',
-        # 'https://integreat.app/tuebingen/en/news/tu-news',
-        # 'https://tunewsinternational.com/category/news-in-english/',  # news
+        'https://www.engelvoelkers.com/en-de/properties/rent-apartment/baden-wurttemberg/tubingen-kreis/',
+        'https://integreat.app/tuebingen/en/news/tu-news',
+        'https://tunewsinternational.com/category/news-in-english/',  # news
         # # reichen solche guides?
         # 'https://guide.michelin.com/en/de/baden-wurttemberg/tbingen/restaurants',
     ]
@@ -125,12 +126,11 @@ class Crawler:
         - None
         """
 
+        print(f'LETS GO: {url}')
+        # Code to measure the execution time
+        time_start = time.time()
         if urljoin(url, '/') not in self.blacklist:
             try:
-                # Check if the URL has already been visited
-                # if self.db.is_url_visited(url)[0]:
-                #    print(f"Already visited: {url}")
-                #    return
 
                 # Make an HTTP GET request to the URL
                 response = requests.get(url)
@@ -139,8 +139,6 @@ class Crawler:
                 full_host = f"{parsed_url.scheme}://{host}" if f"{parsed_url.scheme}://{host}".endswith(
                     '/') else f"{parsed_url.scheme}://{host}/"
 
-                print(f'start crawling domain: {host}')
-                print(f'start crawling domain: {full_host}')
                 # Check if the request is successful (status code 200)
                 if response.status_code == 200:
                     # Check if crawling is allowed and if a delay is set
@@ -154,6 +152,13 @@ class Crawler:
 
                         # only crawl the page content, if the content is english
                         if is_page_language_english(soup, url):
+
+                            # get the sitemap for the host from the sitemap table
+                            domain_internal_links = get_sitemap_from_host(
+                                self, full_host)
+
+                            domain_external_links = []
+
                             # Extract the title, keywords, description, internal/external links, content
                             index = None
 
@@ -167,39 +172,17 @@ class Crawler:
                             normalized_description = get_normalized_description(
                                 description) if description else None
 
-                            domain_external_links = []
+                            links = get_internal_external_links(
+                                soup, domain_internal_links, domain_external_links, full_host, self)
 
-                            try:
-                                domain_internal_links = list(self.db.get_sitemap_from_domain(
-                                    full_host))
-                                print(f'SITEMAP {domain_internal_links}')
+                            internal_links = links[0]
+                            external_links = links[1]
+                            domain_internal_links = links[2]
 
-                            except Exception as e:
-                                domain_internal_links = []
-                                print(
-                                    f"Exception occurred while getting sitemap: {host} | {e}")
+                            domain_external_links = links[3]
 
-                            internal_links = get_internal_external_links(
-                                soup, domain_internal_links, domain_external_links, full_host, self)[0]
-                            
-                            try:
-                                # update the domain_internal_links
-                                self.db.update_domain_sitemap(self, full_host, domain_internal_links)
-
-                            except:
-                                 print(
-                                    f"Exception occurred while getting sitemap: {host} | {e}")
-                            
-                            try:   
-                                domain_internal_links = self.db.add_url_to_domains_sitemap(
-                                        full_host, domain_internal_links)
-                                
-                            except Exception as e:
-                                print(
-                                    f"Exception occurred while pushing to sitemap: {host} | {e}")
-
-                            external_links = get_internal_external_links(
-                                soup, domain_internal_links, domain_external_links, full_host, self)[1]
+                            set_sitemap_to_host(
+                                self, full_host, domain_internal_links)
 
                             content = get_page_content(soup)
 
@@ -242,6 +225,7 @@ class Crawler:
                             # Delay before crawling the next page
                             sleep(crawl_delay)
 
+                            #! we dont push to frontier here. We push in get_internal_external_links after checking the content for each page
                             # Add all the internal links to the frontier
                             # for int_link in domain_internal_links:
                             #     if int_link is not url or int_link is not url[:-1]:
@@ -270,13 +254,59 @@ class Crawler:
         else:
             print(f"Domain blacklisted: {urljoin(url, '/')}")
 
+        # Calculate the execution time
+        time_end = time.time()
+        execution_time = time_end - time_start
+
+        # Print the execution time
+        print(f"Execution time: {execution_time} seconds")
+
     # Start crawling all URL's in the frontier
+
     def crawl(self):
         while True:
             next_url = self.db.pop_frontier()
             if next_url is None:
                 break
             self.crawl_url(next_url)
+
+
+def get_sitemap_from_host(self, domain):
+    """
+    Gets the sitemap from the given domain.
+
+    Parameters:
+    - domain (string): The domain to retrieve the sitemap from.
+
+    Returns:
+    - list: The sitemap list of the domain, or an empty list if the host is not found.
+    """
+    try:
+        sitemap = list(self.db.get_sitemap_from_domain(domain))
+        return sitemap
+    except Exception as e:
+        print(f"Exception occurred while getting sitemap: {domain} | {e}")
+        return []
+
+
+def set_sitemap_to_host(self, domain, array_to_set):
+    """
+    Gets the sitemap from the given domain.
+
+    Parameters:
+    - domain
+    - self
+
+    Returns:
+    - list: the sitemap list of the domain.
+    """
+    try:
+        # update the domain_internal_links
+        self.db.update_domain_sitemap(domain, array_to_set)
+
+    except Exception as e:
+        print(
+            f"Exception occurred while setting sitemap: {domain} | {e}")
 
 
 def normalize_german_chars(text):
@@ -340,7 +370,6 @@ def is_page_language_english(soup, url):
     elif detect(soup.getText()).startswith('en'):
         return True
     else:
-        print('no english content')
         return False
 
 
@@ -415,9 +444,6 @@ def is_crawling_allowed(url, user_agent):
     """
     base_url = urljoin(url, '/')
     robots_url = urljoin(base_url, 'robots.txt')
-    # print(base_url)
-    # print(robots_url)
-    # print(url)
 
     # Fetch the Robots.txt file
     robot = RobotFileParser()
@@ -431,10 +457,8 @@ def is_crawling_allowed(url, user_agent):
             crawl_delay = delay
         else:
             crawl_delay = 0.5
-        print('can fetch')
         return True, crawl_delay
     else:
-        print('no fetch')
         return False, 0.5
 
 
@@ -577,7 +601,6 @@ def get_normalized_description(description):
 
 
 def has_tuebingen_content(url):
-    # print(url)
     user_agent = 'TuebingenExplorer/1.0'
     try:
         response = requests.get(url)
@@ -590,28 +613,18 @@ def has_tuebingen_content(url):
                 soup = BeautifulSoup(response.content, 'html.parser')
 
                 if is_page_language_english(soup, url) and ('tuebingen' in str(soup) or 'Tuebingen' in str(soup) or 'tübingen' in str(soup) or 'Tübingen' in str(soup)):
-                    print('----')
-                    print('tuebingen' in str(soup))
-                    print('----')
                     return True
                 else:
-                    print('----')
-                    print('no tuebingen content')
-                    print('----')
                     return False
             else:
-                print('not allowed')
                 return False
         else:
-            print('----')
-            print('no 200 status')
-            print('----')
             return False
     except Exception as e:
         print(f"Exception occurred while crawling: {url} | {e}")
 
 
-def get_internal_external_links(soup, domain_internal_links, domain_external_links, host, self ):
+def get_internal_external_links(soup, domain_internal_links, domain_external_links, host, self):
     """
     Extracts the internal and external links from a web page from the given BeautifulSoup object.
 
@@ -637,25 +650,24 @@ def get_internal_external_links(soup, domain_internal_links, domain_external_lin
                 if external_link not in external_links and base_url not in self.blacklist and is_page_language_english(soup, external_link):
                     external_links.append(external_link)
                     domain_external_links.append(external_link)
-            elif not href.startswith('#'):
+            elif not href.startswith('#') and not '#' in href:
                 internal_link = base_url[:-1] + href
-                print(f'START CHECK INTERNAL: {internal_link}')
 
+                # check if we should push the url to the frontier
                 if base_url not in self.blacklist:
-                    # add all internal links to web_page_property
-                    internal_links.append(internal_link)
-                    # Add the URL to the somain sitemap
-                    domain_internal_links.append(internal_link)
-                    # check if we should push the url to the frontier
-                    if is_page_language_english(soup, internal_link):
-                        if internal_link not in domain_internal_links:
+                    if base_url + 'en' in internal_link:
+                        if is_page_language_english(soup, internal_link):
                             if has_tuebingen_content(internal_link):
-                                # frontier push here 
-                                print('PUSH TO FRONTIER')
-                                self.db.push_to_frontier(internal_link)
+                                if internal_link not in domain_internal_links:
+                                    # frontier push here
+                                    self.db.push_to_frontier(internal_link)
 
-                    print('END CHECK')
-    print(f'INTERNAL DOMAIN LINKS ARRAY: {domain_internal_links}')
+                # add all internal links to web_page_property
+                internal_links.append(internal_link)
+
+                # Add the URL to the domain sitemap
+                domain_internal_links.append(internal_link)
+
     return (list(set(internal_links)), list(set(external_links)),  list(set(domain_internal_links)),  list(set(domain_external_links)))
 
 
