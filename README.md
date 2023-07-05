@@ -1,5 +1,14 @@
 # better-google
 
+
+install all deps with: `sudo apt-install psycopg2 nltk langdetect bs4 rake_nltk -y`
+
+
+and:
+
+`git clone https://github.com/csurfer/rake-nltk.git`
+`python rake-nltk/setup.py install`
+
 # Database
 
 We're using PostgresSQL.
