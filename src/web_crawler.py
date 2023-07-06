@@ -62,6 +62,7 @@ class Crawler:
         nltk.download('punkt')
         nltk.download('wordnet')
         nltk.download('stopwords')
+        self.max_depth_limit = 1
 
         # If the frontier is empty, we load it with our initial frontier
         if self.db.check_frontier_empty():
@@ -95,6 +96,7 @@ class Crawler:
 
         print("--------------------")
 
+    
     def add_internal_links_to_frontier(self, url, internal_links):
         """
         Adds all the internal links to the frontier array.
@@ -112,6 +114,7 @@ class Crawler:
                     link = urljoin(url, link)
                 self.frontier.append(link)
 
+    
     def crawl_url(self, url):
         """
         Crawls a web page and extracts relevant information.
@@ -222,6 +225,7 @@ class Crawler:
                             self.db.add_visited_url(web_page['id'], url)
 
                             # Delay before crawling the next page
+                            print(f'DELAY {crawl_delay}')
                             sleep(crawl_delay)
 
                             #! we dont push to frontier here. We push in get_internal_external_links after checking the content for each page
@@ -652,15 +656,24 @@ def get_internal_external_links(soup, domain_internal_links, domain_external_lin
             elif not href.startswith('#') and not '#' in href:
                 internal_link = base_url[:-1] + href
 
-                # check if we should push the url to the frontier
-                if base_url not in self.blacklist:
-                    if base_url + 'en' in internal_link:
-                        if is_page_language_english(soup, internal_link):
-                            if has_tuebingen_content(internal_link):
-                                if internal_link not in domain_internal_links:
-                                    # frontier push here
-                                    self.db.push_to_frontier(internal_link)
+                #### check if we should push the url to the frontier
+                # check if depth is fine
+                if calculate_url_depth(internal_link) <= self.max_depth_limit:
+                    # check if not in blacklist
+                    if base_url not in self.blacklist:
+                        # check if not in internal array
+                        if base_url + 'en' in internal_link:
+                            # check if the page content is english 
+                            if is_page_language_english(soup, internal_link):
+                                # check if the content has somthing todo with tuebingen
+                                if has_tuebingen_content(internal_link):
+                                    # check if not in sitemap
+                                    if internal_link not in domain_internal_links:
+                                        # frontier push here
+                                        self.db.push_to_frontier(internal_link)
 
+                else:
+                    print(f'depth error: {internal_link}')
                 # add all internal links to web_page_property
                 internal_links.append(internal_link)
 
@@ -668,6 +681,39 @@ def get_internal_external_links(soup, domain_internal_links, domain_external_lin
                 domain_internal_links.append(internal_link)
 
     return (list(set(internal_links)), list(set(external_links)),  list(set(domain_internal_links)),  list(set(domain_external_links)))
+
+
+def calculate_url_depth(url):
+    """
+    Calculates the depth of a URL based on the number of slashes in the path.
+    If the URL contains '/en/' or '/english/' but not at the end, the depth is adjusted.
+    https://example.com/ => depth = 0
+    https://example.com/en/ => depth = 0
+    https://example.com/page/ => depth = 1
+    https://example.com/en/page/ => depth = 1
+
+    Parameters:
+    - url (str): The URL for which to calculate the depth.
+
+    Returns:
+    - int: The depth of the URL.
+    """
+    # Parse the URL to extract the path
+    parsed_url = urlparse(url)
+    
+    path = parsed_url.path
+    
+    # add missing / 
+    path = path if path.endswith('/') else path + '/'
+
+    # Calculate the depth based on the number of slashes in the path
+    depth = path.count("/") - 1
+
+    # Check if the URL contains '/en/' or '/english/' but not at the end
+    if "/en/" in path or "/english/" in path:
+        depth -= 1
+
+    return depth
 
 
 def get_page_content(soup):
