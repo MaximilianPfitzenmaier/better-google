@@ -1,6 +1,6 @@
 import re
 import nltk
-import web_crawler
+import src.web_crawler
 from nltk.corpus import stopwords
 
 
@@ -17,7 +17,7 @@ class Query:
 
         # Should we even remove special characters?
         temp_query = re.sub(r'[^\w\s]', '', user_query).lower()
-        temp_query = web_crawler.normalize_german_chars(user_query)
+        temp_query = src.web_crawler.normalize_german_chars(user_query)
 
         tokens = nltk.tokenize.word_tokenize(temp_query)
         # remove stopwords

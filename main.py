@@ -1,13 +1,13 @@
-from database import Database
-from web_crawler import Crawler
-from query_handler import Query
-from urllib.parse import urljoin
+import src.database 
+import src.web_crawler 
+import src.query_handler 
+
 
 if __name__ == '__main__':
-    db = Database()
+    db = src.database.Database()
     # db.drop_all_tables()
 
-    crawler = Crawler(db)
+    crawler = src.web_crawler.Crawler(db)
     crawler.crawl()
     # test_query = input("Query: ")
     # query = Query(test_query, db)

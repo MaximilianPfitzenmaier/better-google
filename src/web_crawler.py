@@ -12,7 +12,6 @@ from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import word_tokenize, sent_tokenize
 from nltk.corpus import stopwords
 from rake_nltk import Rake
-from database import Database
 import time
 
 
