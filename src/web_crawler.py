@@ -672,8 +672,6 @@ def get_internal_external_links(soup, domain_internal_links, domain_external_lin
                                         # frontier push here
                                         self.db.push_to_frontier(internal_link)
 
-                else:
-                    print(f'depth error: {internal_link}')
                 # add all internal links to web_page_property
                 internal_links.append(internal_link)
 
@@ -735,6 +733,12 @@ def get_page_content(soup):
 
     # Remove style tags and their content
     content = re.sub(r'<style[^>]*>[\s\S]*?<\/style>', ' ', content)
+    
+    # Remove nav tags and their content
+    content = re.sub(r'<nav[^>]*>[\s\S]*?<\/nav>', ' ', content)
+
+    # Remove footer tags and their content
+    content = re.sub(r'<footer[^>]*>[\s\S]*?<\/footer>', ' ', content)
 
     # Remove HTML comments
     content = re.sub(r'<!--[\s\S]*?-->', ' ', content)
