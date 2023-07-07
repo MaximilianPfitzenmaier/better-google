@@ -5,37 +5,38 @@ import nltk
 from langdetect import detect
 from time import sleep
 from urllib.parse import urljoin
-from urllib.parse import urlparse
+from urllib.parse import urlparse, parse_qs
 from urllib.robotparser import RobotFileParser
 from bs4 import BeautifulSoup
 from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import word_tokenize, sent_tokenize
 from nltk.corpus import stopwords
 from rake_nltk import Rake
-import time
+from datetime import datetime
 
 
 class Crawler:
     initial_frontier = [
-        # 'https://uni-tuebingen.deen/',
-        # 'https://uni-tuebingen.de/en/facilities/central-institutions/university-sports-center/home/',
+        'https://is.mpg.de/en/publications?',
+        'https://uni-tuebingen.deen/',
+        'https://uni-tuebingen.de/en/facilities/central-institutions/university-sports-center/home/',
         'https://hoelderlinturm.de/english/',
         'https://www.tuebingen.de/en/',
         'https://hoelderlinturm.de/english/',
         'https://www.my-stuwe.de/en/',
         # # reichen solche datenbanken?
 
-        # 'https://uni-tuebingen.de/en/',
+        'https://uni-tuebingen.de/en/',
         'https://civis.eu/en/about-civis/universities/eberhard-karls-universitat-tubingen',
         'https://tuebingenresearchcampus.com/en/',
         'https://is.mpg.de/en/',
         # # noch mehr guides, decken aber gut ab - zumal eh die einzelnen seiten idr nur auf deutsch sind
         'https://www.tripadvisor.com/Attractions-g198539-Activities-Tubingen_Baden_Wurttemberg.html',
-        # 'https://www.medizin.uni-tuebingen.de/en-de/',
+        'https://www.medizin.uni-tuebingen.de/en-de/',
         'https://apps.allianzworldwidecare.com/poi/hospital-doctor-and-health-practitioner-finder?PROVTYPE=PRACTITIONERS&TRANS=Doctors%20and%20Health%20Practitioners%20in%20Tuebingen,%20Germany&CON=Europe&COUNTRY=Germany&CITY=Tuebingen&choice=en',
         'https://www.yelp.com/search?cflt=physicians&find_loc=T%C3%BCbingen%2C+Baden-W%C3%BCrttemberg%2C+Germany',
         'https://cyber-valley.de/',
-        # 'https://www.tuebingen.mpg.de/84547/cyber-valley',
+        'https://www.tuebingen.mpg.de/84547/cyber-valley',
         'https://tuebingen.ai/',
         'https://www.bahnhof.de/en/tuebingen-hbf',
         'https://en.wikipedia.org/wiki/T%C3%BCbingen',
@@ -62,7 +63,8 @@ class Crawler:
         nltk.download('punkt')
         nltk.download('wordnet')
         nltk.download('stopwords')
-        self.max_depth_limit = 1
+        self.min_depth_limit = 0
+        self.max_depth_limit = 2
 
         # If the frontier is empty, we load it with our initial frontier
         if self.db.check_frontier_empty():
@@ -96,7 +98,6 @@ class Crawler:
 
         print("--------------------")
 
-    
     def add_internal_links_to_frontier(self, url, internal_links):
         """
         Adds all the internal links to the frontier array.
@@ -114,7 +115,6 @@ class Crawler:
                     link = urljoin(url, link)
                 self.frontier.append(link)
 
-    
     def crawl_url(self, url):
         """
         Crawls a web page and extracts relevant information.
@@ -130,7 +130,6 @@ class Crawler:
 
         print(f'LETS GO: {url}')
         # Code to measure the execution time
-        time_start = time.time()
         if urljoin(url, '/') not in self.blacklist:
             try:
 
@@ -225,7 +224,6 @@ class Crawler:
                             self.db.add_visited_url(web_page['id'], url)
 
                             # Delay before crawling the next page
-                            print(f'DELAY {crawl_delay}')
                             sleep(crawl_delay)
 
                             #! we dont push to frontier here. We push in get_internal_external_links after checking the content for each page
@@ -256,13 +254,6 @@ class Crawler:
                 print(f"Exception occurred while crawling: {url} | {e}")
         else:
             print(f"Domain blacklisted: {urljoin(url, '/')}")
-
-        # Calculate the execution time
-        time_end = time.time()
-        execution_time = time_end - time_start
-
-        # Print the execution time
-        print(f"Execution time: {execution_time} seconds")
 
     # Start crawling all URL's in the frontier
 
@@ -656,14 +647,15 @@ def get_internal_external_links(soup, domain_internal_links, domain_external_lin
             elif not href.startswith('#') and not '#' in href:
                 internal_link = base_url[:-1] + href
 
-                #### check if we should push the url to the frontier
+                # check if we should push the url to the frontier
                 # check if depth is fine
-                if calculate_url_depth(internal_link) <= self.max_depth_limit:
+                depth = calculate_url_depth(internal_link)
+                if depth <= self.max_depth_limit and depth >= self.min_depth_limit:
                     # check if not in blacklist
                     if base_url not in self.blacklist:
                         # check if not in internal array
                         if base_url + 'en' in internal_link:
-                            # check if the page content is english 
+                            # check if the page content is english
                             if is_page_language_english(soup, internal_link):
                                 # check if the content has somthing todo with tuebingen
                                 if has_tuebingen_content(internal_link):
@@ -698,10 +690,11 @@ def calculate_url_depth(url):
     """
     # Parse the URL to extract the path
     parsed_url = urlparse(url)
-    
+    query = parsed_url.query
+
     path = parsed_url.path
-    
-    # add missing / 
+
+    # add missing /
     path = path if path.endswith('/') else path + '/'
 
     # Calculate the depth based on the number of slashes in the path
@@ -710,6 +703,23 @@ def calculate_url_depth(url):
     # Check if the URL contains '/en/' or '/english/' but not at the end
     if "/en/" in path or "/english/" in path:
         depth -= 1
+
+    # Check if the URL has query parameters
+    if query:
+        depth += 1
+
+        # Check if the query parameters contain a 'year' parameter
+        query_params = parse_qs(query)
+        year_param = query_params.get('year[]')
+        if year_param:
+            # Extract the first value of the 'year' parameter
+            year = year_param[0]
+
+            # Get the current year
+            current_year = datetime.now().year
+            # Check if the year is smaller than the current year - 3 years
+            if int(year) < current_year - 3:
+                return None  # Skip this URL
 
     return depth
 
@@ -733,7 +743,7 @@ def get_page_content(soup):
 
     # Remove style tags and their content
     content = re.sub(r'<style[^>]*>[\s\S]*?<\/style>', ' ', content)
-    
+
     # Remove nav tags and their content
     content = re.sub(r'<nav[^>]*>[\s\S]*?<\/nav>', ' ', content)
 
