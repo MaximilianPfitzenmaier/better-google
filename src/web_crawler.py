@@ -2,6 +2,7 @@
 import requests
 import re
 import nltk
+import threading
 from langdetect import detect
 from time import sleep
 from urllib.parse import urljoin
@@ -13,7 +14,17 @@ from nltk.tokenize import word_tokenize, sent_tokenize
 from nltk.corpus import stopwords
 from rake_nltk import Rake
 from datetime import datetime
+nltk.download('wordnet')
 
+# Define a thread subclass for crawling URLs
+class CrawlThread(threading.Thread):
+    def __init__(self, crawler, url):
+        super().__init__()
+        self.crawler = crawler
+        self.url = url
+
+    def run(self):
+        self.crawler.crawl_url(self.url)
 
 class Crawler:
     initial_frontier = [
@@ -65,6 +76,7 @@ class Crawler:
         nltk.download('stopwords')
         self.min_depth_limit = 0
         self.max_depth_limit = 2
+        self.max_threads = 12
 
         # If the frontier is empty, we load it with our initial frontier
         if self.db.check_frontier_empty():
@@ -255,14 +267,31 @@ class Crawler:
         else:
             print(f"Domain blacklisted: {urljoin(url, '/')}")
 
-    # Start crawling all URL's in the frontier
-
+    #  Start crawling all URLs in the frontier
     def crawl(self):
+        threads = []
+        active_threads = 0
+
         while True:
             next_url = self.db.pop_frontier()
             if next_url is None:
                 break
-            self.crawl_url(next_url)
+
+            # Check if the maximum thread count is reached
+            if active_threads >= self.max_threads:
+                # Wait for a thread to finish before starting a new one
+                threads[0].join()
+                threads.pop(0)
+                active_threads -= 1
+
+            thread = CrawlThread(self, next_url)
+            thread.start()
+            threads.append(thread)
+            active_threads += 1
+
+        # Wait for all remaining threads to complete
+        for thread in threads:
+            thread.join()
 
 
 def get_sitemap_from_host(self, domain):
