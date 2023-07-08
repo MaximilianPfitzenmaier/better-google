@@ -14,9 +14,15 @@ from nltk.tokenize import word_tokenize, sent_tokenize
 from nltk.corpus import stopwords
 from rake_nltk import Rake
 from datetime import datetime
-nltk.download('wordnet')
+import threading
+
+
+# Create a thread-local instance of WordNet and a lock
+wordnet_lock = threading.Lock()
 
 # Define a thread subclass for crawling URLs
+
+
 class CrawlThread(threading.Thread):
     def __init__(self, crawler, url):
         super().__init__()
@@ -26,11 +32,9 @@ class CrawlThread(threading.Thread):
     def run(self):
         self.crawler.crawl_url(self.url)
 
+
 class Crawler:
     initial_frontier = [
-        'https://is.mpg.de/en/publications?',
-        'https://uni-tuebingen.deen/',
-        'https://uni-tuebingen.de/en/facilities/central-institutions/university-sports-center/home/',
         'https://hoelderlinturm.de/english/',
         'https://www.tuebingen.de/en/',
         'https://hoelderlinturm.de/english/',
@@ -60,6 +64,10 @@ class Crawler:
         'https://tunewsinternational.com/category/news-in-english/',  # news
         # # reichen solche guides?
         # 'https://guide.michelin.com/en/de/baden-wurttemberg/tbingen/restaurants',
+
+        'https://uni-tuebingen.deen/',
+        'https://uni-tuebingen.de/en/facilities/central-institutions/university-sports-center/home/',
+        'https://is.mpg.de/en/publications?',
     ]
     # our blacklist
     blacklist = ['https://www.tripadvisor.com/',
@@ -75,8 +83,10 @@ class Crawler:
         nltk.download('wordnet')
         nltk.download('stopwords')
         self.min_depth_limit = 0
-        self.max_depth_limit = 2
+        self.max_depth_limit = 1
         self.max_threads = 12
+        # self.wordnet_local = threading.local()
+        # self.wordnet_local.lock = threading.Lock()
 
         # If the frontier is empty, we load it with our initial frontier
         if self.db.check_frontier_empty():
@@ -141,6 +151,7 @@ class Crawler:
         """
 
         print(f'LETS GO: {url}')
+
         # Code to measure the execution time
         if urljoin(url, '/') not in self.blacklist:
             try:
@@ -191,7 +202,6 @@ class Crawler:
                             internal_links = links[0]
                             external_links = links[1]
                             domain_internal_links = links[2]
-
                             domain_external_links = links[3]
 
                             set_sitemap_to_host(
@@ -237,18 +247,6 @@ class Crawler:
 
                             # Delay before crawling the next page
                             sleep(crawl_delay)
-
-                            #! we dont push to frontier here. We push in get_internal_external_links after checking the content for each page
-                            # Add all the internal links to the frontier
-                            # for int_link in domain_internal_links:
-                            #     if int_link is not url or int_link is not url[:-1]:
-                            #         self.db.push_to_frontier(int_link)
-                            # for ext_link in external_links:
-                            #     self.db.push_to_frontier(ext_link)
-
-                            # reset internal and external links array
-                            # self.internal_links = []
-                            # self.external_links = []
 
                         else:
                             print(
@@ -522,15 +520,17 @@ def get_normalized_title(title):
     stopwords_set = set(stopwords.words('english'))
     filtered_tokens = [token for token in tokens if token not in stopwords_set]
 
-    # Lemmatize the content
-    lemmatizer = WordNetLemmatizer()
-    lemmatized_content = [lemmatizer.lemmatize(
-        token) for token in filtered_tokens]
+    with wordnet_lock:
+        # Lemmatize the content
+        lemmatizer = WordNetLemmatizer()
 
-    # Convert the lemmatized content back to a string
-    lemmatized_content_str = ' '.join(lemmatized_content)
+        lemmatized_content = [lemmatizer.lemmatize(
+            token) for token in filtered_tokens]
 
-    return lemmatized_content_str
+        # Convert the lemmatized content back to a string
+        lemmatized_content_str = ' '.join(lemmatized_content)
+
+        return lemmatized_content_str
 
 
 def get_keywords(content, normalized_title, normalized_description):
@@ -612,15 +612,17 @@ def get_normalized_description(description):
     stopwords_set = set(stopwords.words('english'))
     filtered_tokens = [token for token in tokens if token not in stopwords_set]
 
-    # Lemmatize the content
-    lemmatizer = WordNetLemmatizer()
-    lemmatized_content = [lemmatizer.lemmatize(
-        token) for token in filtered_tokens]
+    with wordnet_lock:
+        # Lemmatize the content
+        lemmatizer = WordNetLemmatizer()
 
-    # Convert the lemmatized content back to a string
-    lemmatized_content_str = ' '.join(lemmatized_content)
+        lemmatized_content = [lemmatizer.lemmatize(
+            token) for token in filtered_tokens]
 
-    return lemmatized_content_str
+        # Convert the lemmatized content back to a string
+        lemmatized_content_str = ' '.join(lemmatized_content)
+
+        return lemmatized_content_str
 
 
 def has_tuebingen_content(url):
@@ -664,24 +666,23 @@ def get_internal_external_links(soup, domain_internal_links, domain_external_lin
     base_url = host
     internal_links = []
     external_links = []
-
     for link in soup.find_all('a'):
         href = link.get('href')
         if href and not href.startswith('mailto:') and not href.startswith('tel:') and not href.startswith('javascript:') and not href.endswith('.jpg') and not href.endswith('.webp'):
             if href.startswith('http'):
                 external_link = href
-                if external_link not in external_links and base_url not in self.blacklist and is_page_language_english(soup, external_link):
-                    external_links.append(external_link)
-                    domain_external_links.append(external_link)
+                # if external_link not in external_links and base_url not in self.blacklist and is_page_language_english(soup, external_link):
+                #     external_links.append(external_link)
+                #        domain_external_links.append(external_link)
             elif not href.startswith('#') and not '#' in href:
                 internal_link = base_url[:-1] + href
 
                 # check if we should push the url to the frontier
-                # check if depth is fine
-                depth = calculate_url_depth(internal_link)
-                if depth <= self.max_depth_limit and depth >= self.min_depth_limit:
-                    # check if not in blacklist
-                    if base_url not in self.blacklist:
+                # check if not in blacklist
+                if base_url not in self.blacklist:
+                    # check if depth is fine
+                    depth = calculate_url_depth(internal_link)
+                    if depth <= self.max_depth_limit and depth >= self.min_depth_limit:
                         # check if not in internal array
                         if base_url + 'en' in internal_link:
                             # check if the page content is english
@@ -808,17 +809,19 @@ def get_page_content(soup):
     # Tokenize the content
     tokens = word_tokenize(content)
 
-    # Lemmatize the content
-    lemmatizer = WordNetLemmatizer()
-    lemmatized_content = []
-    for token in tokens:
-        lemma = lemmatizer.lemmatize(token)
-        lemmatized_content.append(lemma)
+    with wordnet_lock:
+        # Lemmatize the content
+        lemmatizer = WordNetLemmatizer()
 
-    # Convert the lemmatized content back to a string
-    lemmatized_content_str = ' '.join(lemmatized_content)
+        lemmatized_content = []
+        for token in tokens:
+            lemma = lemmatizer.lemmatize(token)
+            lemmatized_content.append(lemma)
 
-    return lemmatized_content_str
+        # Convert the lemmatized content back to a string
+        lemmatized_content_str = ' '.join(lemmatized_content)
+
+        return lemmatized_content_str
 
 
 def get_image_url(soup, url):
