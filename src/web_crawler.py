@@ -19,6 +19,7 @@ import threading
 
 # Create a thread-local instance of WordNet and a lock
 wordnet_lock = threading.Lock()
+db_lock = threading.Lock()
 
 # Define a thread subclass for crawling URLs
 
@@ -120,22 +121,22 @@ class Crawler:
 
         print("--------------------")
 
-    def add_internal_links_to_frontier(self, url, internal_links):
-        """
-        Adds all the internal links to the frontier array.
-        Parameters:
-        - url (BeautifulSoup): The BeautifulSoup url.
-        - internal_links (list):  A list of visited internal URLs
+    # def add_internal_links_to_frontier(self, url, internal_links):
+    #     """
+    #     Adds all the internal links to the frontier array.
+    #     Parameters:
+    #     - url (BeautifulSoup): The BeautifulSoup url.
+    #     - internal_links (list):  A list of visited internal URLs
 
-        Returns:
-        - None
-        """
+    #     Returns:
+    #     - None
+    #     """
 
-        for link in internal_links:
-            if link.startswith("/") or link.startswith(url):
-                if link.startswith("/"):
-                    link = urljoin(url, link)
-                self.frontier.append(link)
+    #     for link in internal_links:
+    #         if link.startswith("/") or link.startswith(url):
+    #             if link.startswith("/"):
+    #                 link = urljoin(url, link)
+    #             self.frontier.append(link)
 
     def crawl_url(self, url):
         """
@@ -236,14 +237,15 @@ class Crawler:
                             )
 
                             # Save to the database
-                            entry = self.db.add_document(web_page)
-                            web_page['id'] = entry[0]
+                            with db_lock:
+                                entry = self.db.add_document(web_page)
+                                web_page['id'] = entry[0]
 
-                            #! Print the details of the web page
-                            # self.print_web_page(web_page)
+                                #! Print the details of the web page
+                                # self.print_web_page(web_page)
 
-                            # Add the URL to the visited URLs list
-                            self.db.add_visited_url(web_page['id'], url)
+                                # Add the URL to the visited URLs list
+                                self.db.add_visited_url(web_page['id'], url)
 
                             # Delay before crawling the next page
                             sleep(crawl_delay)
@@ -271,9 +273,10 @@ class Crawler:
         active_threads = 0
 
         while True:
-            next_url = self.db.pop_frontier()
-            if next_url is None:
-                break
+            with db_lock:
+                next_url = self.db.pop_frontier()
+                if next_url is None:
+                    break
 
             # Check if the maximum thread count is reached
             if active_threads >= self.max_threads:
@@ -302,12 +305,13 @@ def get_sitemap_from_host(self, domain):
     Returns:
     - list: The sitemap list of the domain, or an empty list if the host is not found.
     """
-    try:
-        sitemap = list(self.db.get_sitemap_from_domain(domain))
-        return sitemap
-    except Exception as e:
-        print(f"Exception occurred while getting sitemap: {domain} | {e}")
-        return []
+    with db_lock:
+        try:
+            sitemap = list(self.db.get_sitemap_from_domain(domain))
+            return sitemap
+        except Exception as e:
+            print(f"Exception occurred while getting sitemap: {domain} | {e}")
+            return []
 
 
 def set_sitemap_to_host(self, domain, array_to_set):
@@ -321,13 +325,14 @@ def set_sitemap_to_host(self, domain, array_to_set):
     Returns:
     - list: the sitemap list of the domain.
     """
-    try:
-        # update the domain_internal_links
-        self.db.update_domain_sitemap(domain, array_to_set)
+    with db_lock:
+        try:
+            # update the domain_internal_links
+            self.db.update_domain_sitemap(domain, array_to_set)
 
-    except Exception as e:
-        print(
-            f"Exception occurred while setting sitemap: {domain} | {e}")
+        except Exception as e:
+            print(
+                f"Exception occurred while setting sitemap: {domain} | {e}")
 
 
 def normalize_german_chars(text):
@@ -691,8 +696,9 @@ def get_internal_external_links(soup, domain_internal_links, domain_external_lin
                                 if has_tuebingen_content(internal_link):
                                     # check if not in sitemap
                                     if internal_link not in domain_internal_links:
-                                        # frontier push here
-                                        self.db.push_to_frontier(internal_link)
+                                        with db_lock:
+                                            # frontier push here
+                                            self.db.push_to_frontier(internal_link)
 
                 # add all internal links to web_page_property
                 internal_links.append(internal_link)
