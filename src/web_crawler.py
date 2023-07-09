@@ -156,155 +156,162 @@ class Crawler:
 
         # Code to measure the execution time
         if urljoin(url, '/') not in self.blacklist:
+            
             try:
+                # Make an HTTP GET request to the URL
+                response = requests.get(url)
+                parsed_url = urlparse(url)
+                host = parsed_url.netloc
+                full_host = f"{parsed_url.scheme}://{host}" if f"{parsed_url.scheme}://{host}".endswith(
+                    '/') else f"{parsed_url.scheme}://{host}/"
+            except Exception as e:
+                print(f"Exception occurred while response: {url} | {e}")
+
+            # Check if the request is successful (status code 200)
+            if response.status_code == 200:
                 try:
-                    # Make an HTTP GET request to the URL
-                    response = requests.get(url)
-                    parsed_url = urlparse(url)
-                    host = parsed_url.netloc
-                    full_host = f"{parsed_url.scheme}://{host}" if f"{parsed_url.scheme}://{host}".endswith(
-                        '/') else f"{parsed_url.scheme}://{host}/"
+                    # Check if crawling is allowed and if a delay is set
+                    allowed_delay = is_crawling_allowed(url, self.user_agent)
+                    allowed = allowed_delay[0]
+                    crawl_delay = allowed_delay[1] if allowed_delay[1] else 0.5
                 except Exception as e:
-                    print(f"Exception occurred while response: {url} | {e}")
+                    print(f"Exception occurred while is allowed?: {url} | {e}")
+                    
+                if allowed:
+                    # Use BeautifulSoup to parse the HTML content
+                    soup = BeautifulSoup(response.content, 'html.parser')
 
-                # Check if the request is successful (status code 200)
-                if response.status_code == 200:
-                    try:
-                        # Check if crawling is allowed and if a delay is set
-                        allowed_delay = is_crawling_allowed(url, self.user_agent)
-                        allowed = allowed_delay[0]
-                        crawl_delay = allowed_delay[1] if allowed_delay[1] else 0.5
-                    except Exception as e:
-                        print(f"Exception occurred while is allowed?: {url} | {e}")
+                    # only crawl the page content, if the content is english
+                    if is_page_language_english(soup, url):
+
+                        try:
+                            # get the sitemap for the host from the sitemap table
+                            domain_internal_links = get_sitemap_from_host(
+                                self, full_host)
+                        except Exception as e:
+                            print(f"Exception occurred while crawling: {url} | {e}")
+
+                        domain_external_links = []
+
+                        # Extract the title, keywords, description, internal/external links, content
+                        index = None
+                        try:   
+                            title = "" 
+                            title = get_page_title(soup)
+                        except Exception as e:
+                            print(f"Exception occurred while title: {url} | {e}")
                         
-                    if allowed:
-                        # Use BeautifulSoup to parse the HTML content
-                        soup = BeautifulSoup(response.content, 'html.parser')
+                        try:
+                            normalized_title = ""
+                            normalized_title = get_normalized_title(
+                                title) if title else None
+                        except Exception as e:
+                            print(f"Exception occurred while norm title: {url} | {e}")
+                        
+                        try:
+                            description = ""  
+                            description = get_description(soup)
+                        except Exception as e:
+                            print(f"Exception occurred while description: {url} | {e}")
+                        try:
+                            normalized_description = ""
+                            normalized_description = get_normalized_description(
+                                description) if description else None
+                        except Exception as e:
+                            print(f"Exception occurred while norm description: {url} | {e}")
 
-                        # only crawl the page content, if the content is english
-                        if is_page_language_english(soup, url):
-
-                            try:
-                                # get the sitemap for the host from the sitemap table
-                                domain_internal_links = get_sitemap_from_host(
-                                    self, full_host)
-                            except Exception as e:
-                                print(f"Exception occurred while crawling: {url} | {e}")
-
-                            domain_external_links = []
-
-                            # Extract the title, keywords, description, internal/external links, content
-                            index = None
-                            try:   
-                                title = "" 
-                                title = get_page_title(soup)
-                            except Exception as e:
-                                print(f"Exception occurred while title: {url} | {e}")
-                            
-                            try:
-                                normalized_title = ""
-                                normalized_title = get_normalized_title(
-                                    title) if title else None
-                            except Exception as e:
-                                print(f"Exception occurred while norm title: {url} | {e}")
-                            
-                            try:
-                                description = ""  
-                                description = get_description(soup)
-                            except Exception as e:
-                                print(f"Exception occurred while description: {url} | {e}")
-                            try:
-                                normalized_description = ""
-                                normalized_description = get_normalized_description(
-                                    description) if description else None
-                            except Exception as e:
-                                print(f"Exception occurred while norm description: {url} | {e}")
-
-                            try:
-                                links = get_internal_external_links(
-                                    soup, domain_internal_links, domain_external_links, full_host, self)
-                            except Exception as e:
-                                print(f"Exception occurred while intern extern : {url} | {e}")
+                        try:
+                            links = get_internal_external_links(
+                                soup, domain_internal_links, domain_external_links, full_host, self)
 
                             internal_links = links[0]
                             external_links = links[1]
                             domain_internal_links = links[2]
                             domain_external_links = links[3]
+                        except Exception as e:
+                            print(f"Exception occurred while intern extern : {url} | {e}")
 
+                        try:
+                            set_sitemap_to_host(
+                                self, full_host, domain_internal_links)
+                        except Exception as e:
+                            print(f"Exception occurred while set sitemap: {url} | {e}")
+
+                        try:
+                            content = get_page_content(soup)
+                        except Exception as e:
+                            print(f"Exception occurred while content: {url} | {e}")
+
+                        try: 
+                            keywords = get_keywords(
+                                content, normalized_title, normalized_description)
+                        except Exception as e:
+                            print(f"Exception occurred while keywords: {url} | {e}")
+
+                        in_links = []
+
+                        out_links = []
+                        
+                        try: 
+                            img = get_image_url(soup, url)
+                        except Exception as e:
+                            print(f"Exception occurred while img: {url} | {e}")
+
+                        try:
+                            # Create the web page object
+                            web_page = create_web_page_object(
+                                url,
+                                index,
+                                title,
+                                normalized_title,
+                                keywords,
+                                description,
+                                normalized_description,
+                                internal_links,
+                                external_links,
+                                in_links,
+                                out_links,
+                                content,
+                                img,
+                            )
+                        except Exception as e:
+                            print(f"Exception occurred while web object: {url} | {e}")
+
+                        # Save to the database
+                        with db_lock:
                             try:
-                                set_sitemap_to_host(
-                                    self, full_host, domain_internal_links)
-                            except Exception as e:
-                                print(f"Exception occurred while set sitemap: {url} | {e}")
-
-                            try:
-                                content = get_page_content(soup)
-                            except Exception as e:
-                                print(f"Exception occurred while content: {url} | {e}")
-
-                            try: 
-                                keywords = get_keywords(
-                                    content, normalized_title, normalized_description)
-                            except Exception as e:
-                                print(f"Exception occurred while keywords: {url} | {e}")
-
-                            in_links = []
-
-                            out_links = []
-                            
-                            try: 
-                                img = get_image_url(soup, url)
-                            except Exception as e:
-                                print(f"Exception occurred while img: {url} | {e}")
-
-                            try:
-                                # Create the web page object
-                                web_page = create_web_page_object(
-                                    url,
-                                    index,
-                                    title,
-                                    normalized_title,
-                                    keywords,
-                                    description,
-                                    normalized_description,
-                                    internal_links,
-                                    external_links,
-                                    in_links,
-                                    out_links,
-                                    content,
-                                    img,
-                                )
-                            except Exception as e:
-                                print(f"Exception occurred while web object: {url} | {e}")
-
-                            # Save to the database
-                            with db_lock:
                                 entry = self.db.add_document(web_page)
                                 web_page['id'] = entry[0]
+                            except Exception as e:
+                                print(f"Exception occurred while adding document: {url} | {e}")
 
-                                #! Print the details of the web page
-                                # self.print_web_page(web_page)
+                            #! Print the details of the web page
+                            # self.print_web_page(web_page)
 
+                        with db_lock:
+                            try:
                                 # Add the URL to the visited URLs list
                                 self.db.add_visited_url(web_page['id'], url)
+                            except Exception as e:
+                                print(f"Exception occurred while adding visitied: {url} | {e}")
+                            
 
-                            # Delay before crawling the next page
-                            sleep(crawl_delay)
+                        # Delay before crawling the next page
+                        sleep(crawl_delay)
 
-                        else:
-                            print(
-                                f"Not an English page: {url} or doesnt contain Tuebingen"
-                            )
                     else:
                         print(
-                            f"Error crawling: {url} | Allowed: {allowed} "
+                            f"Not an English page: {url} or doesnt contain Tuebingen"
                         )
                 else:
                     print(
-                        f"Error crawling: {url} | Status: {response.status_code}"
+                        f"Error crawling: {url} | Allowed: {allowed} "
                     )
-            except Exception as e:
-                print(f"Exception occurred while crawling: {url} | {e}")
+            else:
+                print(
+                    f"Error crawling: {url} | Status: {response.status_code}"
+                )
+            
         else:
             print(f"Domain blacklisted: {urljoin(url, '/')}")
 
