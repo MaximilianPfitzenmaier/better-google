@@ -36,39 +36,40 @@ class CrawlThread(threading.Thread):
 
 class Crawler:
     initial_frontier = [
-        'https://hoelderlinturm.de/english/',
+        # 'https://hoelderlinturm.de/english/',
         'https://www.tuebingen.de/en/',
-        'https://hoelderlinturm.de/english/',
-        'https://www.my-stuwe.de/en/',
-        # # reichen solche datenbanken?
+        
+        # 'https://hoelderlinturm.de/english/',
+        # 'https://www.my-stuwe.de/en/',
+        # # # reichen solche datenbanken?
 
-        'https://uni-tuebingen.de/en/',
-        'https://civis.eu/en/about-civis/universities/eberhard-karls-universitat-tubingen',
-        'https://tuebingenresearchcampus.com/en/',
+        # 'https://uni-tuebingen.de/en/',
+        # 'https://civis.eu/en/about-civis/universities/eberhard-karls-universitat-tubingen',
+        # 'https://tuebingenresearchcampus.com/en/',
         'https://is.mpg.de/en/',
-        # # noch mehr guides, decken aber gut ab - zumal eh die einzelnen seiten idr nur auf deutsch sind
-        'https://www.tripadvisor.com/Attractions-g198539-Activities-Tubingen_Baden_Wurttemberg.html',
-        'https://www.medizin.uni-tuebingen.de/en-de/',
-        'https://apps.allianzworldwidecare.com/poi/hospital-doctor-and-health-practitioner-finder?PROVTYPE=PRACTITIONERS&TRANS=Doctors%20and%20Health%20Practitioners%20in%20Tuebingen,%20Germany&CON=Europe&COUNTRY=Germany&CITY=Tuebingen&choice=en',
-        'https://www.yelp.com/search?cflt=physicians&find_loc=T%C3%BCbingen%2C+Baden-W%C3%BCrttemberg%2C+Germany',
-        'https://cyber-valley.de/',
-        'https://www.tuebingen.mpg.de/84547/cyber-valley',
-        'https://tuebingen.ai/',
-        'https://www.bahnhof.de/en/tuebingen-hbf',
-        'https://en.wikipedia.org/wiki/T%C3%BCbingen',
-        'https://www.eml-unitue.de/',
-        'https://wikitravel.org/en/T%C3%BCbingen',
-        # # politics
-        # # geograpy
-        'https://www.engelvoelkers.com/en-de/properties/rent-apartment/baden-wurttemberg/tubingen-kreis/',
-        'https://integreat.app/tuebingen/en/news/tu-news',
-        'https://tunewsinternational.com/category/news-in-english/',  # news
-        # # reichen solche guides?
-        # 'https://guide.michelin.com/en/de/baden-wurttemberg/tbingen/restaurants',
+        # # # noch mehr guides, decken aber gut ab - zumal eh die einzelnen seiten idr nur auf deutsch sind
+        # 'https://www.tripadvisor.com/Attractions-g198539-Activities-Tubingen_Baden_Wurttemberg.html',
+        # 'https://www.medizin.uni-tuebingen.de/en-de/',
+        # 'https://apps.allianzworldwidecare.com/poi/hospital-doctor-and-health-practitioner-finder?PROVTYPE=PRACTITIONERS&TRANS=Doctors%20and%20Health%20Practitioners%20in%20Tuebingen,%20Germany&CON=Europe&COUNTRY=Germany&CITY=Tuebingen&choice=en',
+        # 'https://www.yelp.com/search?cflt=physicians&find_loc=T%C3%BCbingen%2C+Baden-W%C3%BCrttemberg%2C+Germany',
+        # 'https://cyber-valley.de/',
+        # 'https://www.tuebingen.mpg.de/84547/cyber-valley',
+        # 'https://tuebingen.ai/',
+        # 'https://www.bahnhof.de/en/tuebingen-hbf',
+        # 'https://en.wikipedia.org/wiki/T%C3%BCbingen',
+        # 'https://www.eml-unitue.de/',
+        # 'https://wikitravel.org/en/T%C3%BCbingen',
+        # # # politics
+        # # # geograpy
+        # 'https://www.engelvoelkers.com/en-de/properties/rent-apartment/baden-wurttemberg/tubingen-kreis/',
+        # 'https://integreat.app/tuebingen/en/news/tu-news',
+        # 'https://tunewsinternational.com/category/news-in-english/',  # news
+        # # # reichen solche guides?
+        # # 'https://guide.michelin.com/en/de/baden-wurttemberg/tbingen/restaurants',
 
-        'https://uni-tuebingen.deen/',
-        'https://uni-tuebingen.de/en/facilities/central-institutions/university-sports-center/home/',
-        'https://is.mpg.de/en/publications?',
+        # 'https://uni-tuebingen.deen/',
+        # 'https://uni-tuebingen.de/en/facilities/central-institutions/university-sports-center/home/',
+        # 'https://is.mpg.de/en/publications?',
     ]
     # our blacklist
     blacklist = ['https://www.tripadvisor.com/',
@@ -85,7 +86,7 @@ class Crawler:
         nltk.download('stopwords')
         self.min_depth_limit = 0
         self.max_depth_limit = 1
-        self.max_threads = 12
+        self.max_threads = 4
         # self.wordnet_local = threading.local()
         # self.wordnet_local.lock = threading.Lock()
 
@@ -156,21 +157,26 @@ class Crawler:
         # Code to measure the execution time
         if urljoin(url, '/') not in self.blacklist:
             try:
-
-                # Make an HTTP GET request to the URL
-                response = requests.get(url)
-                parsed_url = urlparse(url)
-                host = parsed_url.netloc
-                full_host = f"{parsed_url.scheme}://{host}" if f"{parsed_url.scheme}://{host}".endswith(
-                    '/') else f"{parsed_url.scheme}://{host}/"
+                try:
+                    # Make an HTTP GET request to the URL
+                    response = requests.get(url)
+                    parsed_url = urlparse(url)
+                    host = parsed_url.netloc
+                    full_host = f"{parsed_url.scheme}://{host}" if f"{parsed_url.scheme}://{host}".endswith(
+                        '/') else f"{parsed_url.scheme}://{host}/"
+                except Exception as e:
+                    print(f"Exception occurred while response: {url} | {e}")
 
                 # Check if the request is successful (status code 200)
                 if response.status_code == 200:
-                    # Check if crawling is allowed and if a delay is set
-                    allowed_delay = is_crawling_allowed(url, self.user_agent)
-                    allowed = allowed_delay[0]
-                    crawl_delay = allowed_delay[1] if allowed_delay[1] else 0.5
-
+                    try:
+                        # Check if crawling is allowed and if a delay is set
+                        allowed_delay = is_crawling_allowed(url, self.user_agent)
+                        allowed = allowed_delay[0]
+                        crawl_delay = allowed_delay[1] if allowed_delay[1] else 0.5
+                    except Exception as e:
+                        print(f"Exception occurred while is allowed?: {url} | {e}")
+                        
                     if allowed:
                         # Use BeautifulSoup to parse the HTML content
                         soup = BeautifulSoup(response.content, 'html.parser')
@@ -178,63 +184,98 @@ class Crawler:
                         # only crawl the page content, if the content is english
                         if is_page_language_english(soup, url):
 
-                            # get the sitemap for the host from the sitemap table
-                            domain_internal_links = get_sitemap_from_host(
-                                self, full_host)
+                            try:
+                                # get the sitemap for the host from the sitemap table
+                                domain_internal_links = get_sitemap_from_host(
+                                    self, full_host)
+                            except Exception as e:
+                                print(f"Exception occurred while crawling: {url} | {e}")
 
                             domain_external_links = []
 
                             # Extract the title, keywords, description, internal/external links, content
                             index = None
+                            try:   
+                                title = "" 
+                                title = get_page_title(soup)
+                            except Exception as e:
+                                print(f"Exception occurred while title: {url} | {e}")
+                            
+                            try:
+                                normalized_title = ""
+                                normalized_title = get_normalized_title(
+                                    title) if title else None
+                            except Exception as e:
+                                print(f"Exception occurred while norm title: {url} | {e}")
+                            
+                            try:
+                                description = ""  
+                                description = get_description(soup)
+                            except Exception as e:
+                                print(f"Exception occurred while description: {url} | {e}")
+                            try:
+                                normalized_description = ""
+                                normalized_description = get_normalized_description(
+                                    description) if description else None
+                            except Exception as e:
+                                print(f"Exception occurred while norm description: {url} | {e}")
 
-                            title = get_page_title(soup)
-
-                            normalized_title = get_normalized_title(
-                                title) if title else None
-
-                            description = get_description(soup)
-
-                            normalized_description = get_normalized_description(
-                                description) if description else None
-
-                            links = get_internal_external_links(
-                                soup, domain_internal_links, domain_external_links, full_host, self)
+                            try:
+                                links = get_internal_external_links(
+                                    soup, domain_internal_links, domain_external_links, full_host, self)
+                            except Exception as e:
+                                print(f"Exception occurred while intern extern : {url} | {e}")
 
                             internal_links = links[0]
                             external_links = links[1]
                             domain_internal_links = links[2]
                             domain_external_links = links[3]
 
-                            set_sitemap_to_host(
-                                self, full_host, domain_internal_links)
+                            try:
+                                set_sitemap_to_host(
+                                    self, full_host, domain_internal_links)
+                            except Exception as e:
+                                print(f"Exception occurred while set sitemap: {url} | {e}")
 
-                            content = get_page_content(soup)
+                            try:
+                                content = get_page_content(soup)
+                            except Exception as e:
+                                print(f"Exception occurred while content: {url} | {e}")
 
-                            keywords = get_keywords(
-                                content, normalized_title, normalized_description)
+                            try: 
+                                keywords = get_keywords(
+                                    content, normalized_title, normalized_description)
+                            except Exception as e:
+                                print(f"Exception occurred while keywords: {url} | {e}")
 
                             in_links = []
 
                             out_links = []
+                            
+                            try: 
+                                img = get_image_url(soup, url)
+                            except Exception as e:
+                                print(f"Exception occurred while img: {url} | {e}")
 
-                            img = get_image_url(soup, url)
-
-                            # Create the web page object
-                            web_page = create_web_page_object(
-                                url,
-                                index,
-                                title,
-                                normalized_title,
-                                keywords,
-                                description,
-                                normalized_description,
-                                internal_links,
-                                external_links,
-                                in_links,
-                                out_links,
-                                content,
-                                img,
-                            )
+                            try:
+                                # Create the web page object
+                                web_page = create_web_page_object(
+                                    url,
+                                    index,
+                                    title,
+                                    normalized_title,
+                                    keywords,
+                                    description,
+                                    normalized_description,
+                                    internal_links,
+                                    external_links,
+                                    in_links,
+                                    out_links,
+                                    content,
+                                    img,
+                                )
+                            except Exception as e:
+                                print(f"Exception occurred while web object: {url} | {e}")
 
                             # Save to the database
                             with db_lock:
@@ -518,14 +559,14 @@ def get_normalized_title(title):
     # Normalize German characters to English equivalents
     content = normalize_german_chars(content)
 
-    # Tokenize the content
-    tokens = word_tokenize(content)
-
-    # Remove stopwords
-    stopwords_set = set(stopwords.words('english'))
-    filtered_tokens = [token for token in tokens if token not in stopwords_set]
-
     with wordnet_lock:
+        # Tokenize the content
+        tokens = word_tokenize(content)
+
+        # Remove stopwords
+        stopwords_set = set(stopwords.words('english'))
+        filtered_tokens = [token for token in tokens if token not in stopwords_set]
+
         # Lemmatize the content
         lemmatizer = WordNetLemmatizer()
 
