@@ -36,8 +36,13 @@ class CrawlThread(threading.Thread):
 
 class Crawler:
     initial_frontier = [
-        # 'https://hoelderlinturm.de/english/',
-        'https://www.tuebingen.de/en/',
+
+      
+        'https://en.stuttgart.de/',
+        'https://en.wikipedia.org/wiki/Stuttgart',
+        'https://www.stuttgart-tourist.de/en',
+
+        # 'https://www.tuebingen.de/en/',
         
         # 'https://hoelderlinturm.de/english/',
         # 'https://www.my-stuwe.de/en/',
@@ -46,14 +51,14 @@ class Crawler:
         # 'https://uni-tuebingen.de/en/',
         # 'https://civis.eu/en/about-civis/universities/eberhard-karls-universitat-tubingen',
         # 'https://tuebingenresearchcampus.com/en/',
-        'https://is.mpg.de/en/',
+        # # 'https://is.mpg.de/en/',
         # # # noch mehr guides, decken aber gut ab - zumal eh die einzelnen seiten idr nur auf deutsch sind
         # 'https://www.tripadvisor.com/Attractions-g198539-Activities-Tubingen_Baden_Wurttemberg.html',
         # 'https://www.medizin.uni-tuebingen.de/en-de/',
         # 'https://apps.allianzworldwidecare.com/poi/hospital-doctor-and-health-practitioner-finder?PROVTYPE=PRACTITIONERS&TRANS=Doctors%20and%20Health%20Practitioners%20in%20Tuebingen,%20Germany&CON=Europe&COUNTRY=Germany&CITY=Tuebingen&choice=en',
         # 'https://www.yelp.com/search?cflt=physicians&find_loc=T%C3%BCbingen%2C+Baden-W%C3%BCrttemberg%2C+Germany',
         # 'https://cyber-valley.de/',
-        # 'https://www.tuebingen.mpg.de/84547/cyber-valley',
+        # # 'https://www.tuebingen.mpg.de/84547/cyber-valley',
         # 'https://tuebingen.ai/',
         # 'https://www.bahnhof.de/en/tuebingen-hbf',
         # 'https://en.wikipedia.org/wiki/T%C3%BCbingen',
@@ -64,12 +69,12 @@ class Crawler:
         # 'https://www.engelvoelkers.com/en-de/properties/rent-apartment/baden-wurttemberg/tubingen-kreis/',
         # 'https://integreat.app/tuebingen/en/news/tu-news',
         # 'https://tunewsinternational.com/category/news-in-english/',  # news
-        # # # reichen solche guides?
-        # # 'https://guide.michelin.com/en/de/baden-wurttemberg/tbingen/restaurants',
+        # # # # reichen solche guides?
+        # # # 'https://guide.michelin.com/en/de/baden-wurttemberg/tbingen/restaurants',
 
-        # 'https://uni-tuebingen.deen/',
-        # 'https://uni-tuebingen.de/en/facilities/central-institutions/university-sports-center/home/',
-        # 'https://is.mpg.de/en/publications?',
+        # # 'https://uni-tuebingen.deen/',
+        # # 'https://uni-tuebingen.de/en/facilities/central-institutions/university-sports-center/home/',
+        # # 'https://is.mpg.de/en/publications?',
     ]
     # our blacklist
     blacklist = ['https://www.tripadvisor.com/',
@@ -87,6 +92,7 @@ class Crawler:
         self.min_depth_limit = 0
         self.max_depth_limit = 1
         self.max_threads = 4
+        self.base_crawl_delay = 2.0
         # self.wordnet_local = threading.local()
         # self.wordnet_local.lock = threading.Lock()
 
@@ -113,11 +119,11 @@ class Crawler:
         print(f"Keywords: {web_page['keywords']}")
         print(f"Description: {web_page['description']}")
         print(f"Normalized Description: {web_page['normalized_description']}")
-        # print(f"Internal Links: {web_page['internal_links']}")
-        # print(f"External Links: {web_page['external_links']}")
-        # print(f"In Links: {web_page['in_links']}")
-        # print(f"Out Links: {web_page['out_links']}")
-        # print(f"Content: {web_page['content']}")
+        print(f"Internal Links: {web_page['internal_links']}")
+        print(f"External Links: {web_page['external_links']}")
+        print(f"In Links: {web_page['in_links']}")
+        print(f"Out Links: {web_page['out_links']}")
+        print(f"Content: {web_page['content']}")
         print(f"Image URL: {web_page['img']}")
 
         print("--------------------")
@@ -157,9 +163,9 @@ class Crawler:
         # Code to measure the execution time
         if urljoin(url, '/') not in self.blacklist:
             
+            # Make an HTTP GET request to the URL
+            response = requests.get(url)
             try:
-                # Make an HTTP GET request to the URL
-                response = requests.get(url)
                 parsed_url = urlparse(url)
                 host = parsed_url.netloc
                 full_host = f"{parsed_url.scheme}://{host}" if f"{parsed_url.scheme}://{host}".endswith(
@@ -169,13 +175,11 @@ class Crawler:
 
             # Check if the request is successful (status code 200)
             if response.status_code == 200:
-                try:
-                    # Check if crawling is allowed and if a delay is set
-                    allowed_delay = is_crawling_allowed(url, self.user_agent)
-                    allowed = allowed_delay[0]
-                    crawl_delay = allowed_delay[1] if allowed_delay[1] else 0.5
-                except Exception as e:
-                    print(f"Exception occurred while is allowed?: {url} | {e}")
+            
+                # Check if crawling is allowed and if a delay is set
+                allowed_delay = is_crawling_allowed(self.base_crawl_delay, url, self.user_agent)
+                allowed = allowed_delay[0]
+                crawl_delay = allowed_delay[1] if allowed_delay[1] else self.base_crawl_delay
                     
                 if allowed:
                     # Use BeautifulSoup to parse the HTML content
@@ -221,6 +225,11 @@ class Crawler:
                             print(f"Exception occurred while norm description: {url} | {e}")
 
                         try:
+                            internal_links = []
+                            external_links = []
+                            domain_internal_links = []
+                            domain_external_links = []
+
                             links = get_internal_external_links(
                                 soup, domain_internal_links, domain_external_links, full_host, self)
 
@@ -260,6 +269,7 @@ class Crawler:
                         try:
                             # Create the web page object
                             web_page = create_web_page_object(
+                                id,
                                 url,
                                 index,
                                 title,
@@ -283,6 +293,7 @@ class Crawler:
                                 entry = self.db.add_document(web_page)
                                 web_page['id'] = entry[0]
                             except Exception as e:
+                                self.print_web_page(web_page)
                                 print(f"Exception occurred while adding document: {url} | {e}")
 
                             #! Print the details of the web page
@@ -301,7 +312,7 @@ class Crawler:
 
                     else:
                         print(
-                            f"Not an English page: {url} or doesnt contain Tuebingen"
+                            f"Not an English page: {url} or doesnt contain Stuttgart"
                         )
                 else:
                     print(
@@ -449,6 +460,7 @@ def is_page_language_english(soup, url):
 
 # Crawler Functions
 def create_web_page_object(
+    id,
     url,
     index,
     title,
@@ -487,7 +499,7 @@ def create_web_page_object(
     """
 
     return {
-        # 'id': page_id,
+        'id': 0,
         'url': url,
         'index': index,
         'title': title,
@@ -504,7 +516,7 @@ def create_web_page_object(
     }
 
 
-def is_crawling_allowed(url, user_agent):
+def is_crawling_allowed(base_crawl_delay, url, user_agent):
     """
     Checks if crawling is allowed for the given URL and user agent.
 
@@ -514,7 +526,7 @@ def is_crawling_allowed(url, user_agent):
 
     Returns:
     - (bool): True if crawling is allowed, False otherwise.
-    - (float): The crawl delay in seconds if specified, 0.5 otherwise.
+    - (float): The crawl delay in seconds if specified, base_crawl_delay otherwise.
     """
     base_url = urljoin(url, '/')
     robots_url = urljoin(base_url, 'robots.txt')
@@ -530,10 +542,10 @@ def is_crawling_allowed(url, user_agent):
         if delay:
             crawl_delay = delay
         else:
-            crawl_delay = 0.5
+            crawl_delay = base_crawl_delay
         return True, crawl_delay
     else:
-        return False, 0.5
+        return False, delay
 
 
 def get_page_title(soup):
@@ -681,16 +693,19 @@ def get_normalized_description(description):
 def has_tuebingen_content(url):
     user_agent = 'TuebingenExplorer/1.0'
     try:
+        
         response = requests.get(url)
 
         # Check if the request is successful (status code 200)
         if response.status_code == 200:
-            is_allowed = is_crawling_allowed(url, user_agent)
+            is_allowed = is_crawling_allowed(2.0, url, user_agent)
             if is_allowed[0]:
                 # Use BeautifulSoup to parse the HTML content
                 soup = BeautifulSoup(response.content, 'html.parser')
 
-                if is_page_language_english(soup, url) and ('tuebingen' in str(soup) or 'Tuebingen' in str(soup) or 'tübingen' in str(soup) or 'Tübingen' in str(soup)):
+                # if is_page_language_english(soup, url) and ('tuebingen' in str(soup) or 'Tuebingen' in str(soup) or 'tübingen' in str(soup) or 'Tübingen' in str(soup)):
+                if is_page_language_english(soup, url) and ('stuttgart' in str(soup) or 'Stuttgart' in str(soup) ):
+
                     return True
                 else:
                     return False
@@ -724,8 +739,25 @@ def get_internal_external_links(soup, domain_internal_links, domain_external_lin
         if href and not href.startswith('mailto:') and not href.startswith('tel:') and not href.startswith('javascript:') and not href.endswith('.jpg') and not href.endswith('.webp'):
             if href.startswith('http'):
                 external_link = href
-                # if external_link not in external_links and base_url not in self.blacklist and is_page_language_english(soup, external_link):
-                #     external_links.append(external_link)
+                # check if we should push the url to the frontier
+                # check if not in blacklist
+                if base_url not in self.blacklist:
+                    # check if depth is fine
+                    depth = calculate_url_depth(external_link)
+                    if depth <= self.max_depth_limit and depth >= self.min_depth_limit:
+                        # check if not in internal array
+                        if base_url + 'en' in external_link:
+                            # check if the page content is english
+                            if is_page_language_english(soup, external_link):
+                                # check if the content has somthing todo with tuebingen
+                                if has_tuebingen_content(external_link):
+                                    # check if not in sitemap
+                                    if external_link not in domain_internal_links:
+                                        with db_lock:
+                                            # frontier push here
+                                            self.db.push_to_frontier(external_link)
+                
+                external_links.append(external_link)
                 #        domain_external_links.append(external_link)
             elif not href.startswith('#') and not '#' in href:
                 internal_link = base_url[:-1] + href
