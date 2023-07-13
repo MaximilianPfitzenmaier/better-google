@@ -1,7 +1,10 @@
 # imports
+import numpy as np
 import requests
 import re
 import nltk
+import spacy
+import keybert
 from langdetect import detect
 from time import sleep
 from urllib.parse import urljoin
@@ -13,37 +16,38 @@ from nltk.corpus import stopwords
 from rake_nltk import Rake
 from database import Database
 
+spacy.cli.download("en_core_web_sm")
 
 class Crawler:
     initial_frontier = [
         'https://hoelderlinturm.de/english/',
-        'https://www.tuebingen.de/en/',
-        # reichen solche guides?
-        'https://www.my-stuwe.de/en/',
-        'https://guide.michelin.com/en/de/baden-wurttemberg/tbingen/restaurants',
-        # reichen solche datenbanken?
-        'https://uni-tuebingen.de/en/facilities/central-institutions/university-sports-center/home/',
-        'https://uni-tuebingen.de/en/',
-        'https://civis.eu/en/about-civis/universities/eberhard-karls-universitat-tubingen',
-        'https://tuebingenresearchcampus.com/',
-        'https://is.mpg.de/',
-        # noch mehr guides, decken aber gut ab - zumal eh die einzelnen seiten idr nur auf deutsch sind
-        'https://www.tripadvisor.com/Attractions-g198539-Activities-Tubingen_Baden_Wurttemberg.html',
-        'https://www.medizin.uni-tuebingen.de/en-de/startseite',
-        'https://apps.allianzworldwidecare.com/poi/hospital-doctor-and-health-practitioner-finder?PROVTYPE=PRACTITIONERS&TRANS=Doctors%20and%20Health%20Practitioners%20in%20Tuebingen,%20Germany&CON=Europe&COUNTRY=Germany&CITY=Tuebingen&choice=en',
-        'https://www.yelp.com/search?cflt=physicians&find_loc=T%C3%BCbingen%2C+Baden-W%C3%BCrttemberg%2C+Germany',
-        'https://cyber-valley.de/',
-        'https://www.tuebingen.mpg.de/84547/cyber-valley',
-        'https://tuebingen.ai/',
-        'https://www.eml-unitue.de/',
-        'https://en.wikipedia.org/wiki/T%C3%BCbingen',
-        'https://wikitravel.org/en/T%C3%BCbingen',
-        'https://www.bahnhof.de/en/tuebingen-hbf',
-        # politics
-        # geograpy
-        'https://www.engelvoelkers.com/en-de/properties/rent-apartment/baden-wurttemberg/tubingen-kreis/',
-        'https://integreat.app/tuebingen/en/news/tu-news',
-        'https://tunewsinternational.com/category/news-in-english/',  # news
+        # 'https://www.tuebingen.de/en/',
+        # # reichen solche guides?
+        # 'https://www.my-stuwe.de/en/',
+        # 'https://guide.michelin.com/en/de/baden-wurttemberg/tbingen/restaurants',
+        # # reichen solche datenbanken?
+        # 'https://uni-tuebingen.de/en/facilities/central-institutions/university-sports-center/home/',
+        # 'https://uni-tuebingen.de/en/',
+        # 'https://civis.eu/en/about-civis/universities/eberhard-karls-universitat-tubingen',
+        # 'https://tuebingenresearchcampus.com/',
+        # 'https://is.mpg.de/',
+        # # noch mehr guides, decken aber gut ab - zumal eh die einzelnen seiten idr nur auf deutsch sind
+        # 'https://www.tripadvisor.com/Attractions-g198539-Activities-Tubingen_Baden_Wurttemberg.html',
+        # 'https://www.medizin.uni-tuebingen.de/en-de/startseite',
+        # 'https://apps.allianzworldwidecare.com/poi/hospital-doctor-and-health-practitioner-finder?PROVTYPE=PRACTITIONERS&TRANS=Doctors%20and%20Health%20Practitioners%20in%20Tuebingen,%20Germany&CON=Europe&COUNTRY=Germany&CITY=Tuebingen&choice=en',
+        # 'https://www.yelp.com/search?cflt=physicians&find_loc=T%C3%BCbingen%2C+Baden-W%C3%BCrttemberg%2C+Germany',
+        # 'https://cyber-valley.de/',
+        # 'https://www.tuebingen.mpg.de/84547/cyber-valley',
+        # 'https://tuebingen.ai/',
+        # 'https://www.eml-unitue.de/',
+        # 'https://en.wikipedia.org/wiki/T%C3%BCbingen',
+        # 'https://wikitravel.org/en/T%C3%BCbingen',
+        # 'https://www.bahnhof.de/en/tuebingen-hbf',
+        # # politics
+        # # geograpy
+        # 'https://www.engelvoelkers.com/en-de/properties/rent-apartment/baden-wurttemberg/tubingen-kreis/',
+        # 'https://integreat.app/tuebingen/en/news/tu-news',
+        # 'https://tunewsinternational.com/category/news-in-english/',  # news
     ]
     # our blacklist
     blacklist = ['https://www.tripadvisor.com/', 'https://www.yelp.com/']
@@ -438,23 +442,38 @@ def get_keywords(content, normalized_title, normalized_description):
     if normalized_description is not None:
         concat += normalized_description
 
+    ## rake
     # Create an instance of the Rake object
-    r = Rake()
-    r.extract_keywords_from_text(concat)
-    ranked_phrases_with_scores = r.get_ranked_phrases_with_scores()
+    # r = Rake()
+    # r.extract_keywords_from_text(concat)
+    # ranked_phrases_with_scores = r.get_ranked_phrases_with_scores()
+    #
+    # # Filter out phrases with more than one word
+    # single_words = [
+    #     phrase
+    #     for score, phrase in ranked_phrases_with_scores
+    #     if len(phrase.split()) == 1
+    # ]
+    #
+    # # Deduplicate keywords (case-insensitive)
+    # unique_keywords = list(set(map(str.lower, single_words)))
+    #
+    # # Limit to the top single words
+    # keywords = unique_keywords
 
-    # Filter out phrases with more than one word
-    single_words = [
-        phrase
-        for score, phrase in ranked_phrases_with_scores
-        if len(phrase.split()) == 1
-    ]
+    ## spacy
+    #
+    # nlp = spacy.load("en_core_web_sm")
+    # nlp.add_pipe("textrank")
+    # doc = nlp(concat)
+    # keywords = [phrase.text for phrase in doc._.phrases[:20]]
 
-    # Deduplicate keywords (case-insensitive)
-    unique_keywords = list(set(map(str.lower, single_words)))
+    ##keybert
+    kw_model = keybert.KeyBERT()
+    keywords_a = kw_model.extract_keywords(concat, top_n=20, keyphrase_ngram_range=(1, 2))
+    keywords = [key[0] for key in keywords_a]
 
-    # Limit to the top single words
-    keywords = unique_keywords
+    np.savetxt('keywordskeybertphrase.txt', keywords, fmt='%s')
 
     return keywords
 
