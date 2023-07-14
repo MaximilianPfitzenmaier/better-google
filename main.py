@@ -18,7 +18,6 @@ if __name__ == '__main__':
 
     # Calculate the execution time
     time_end = time.time()
-    execution_time = ( time_end - time_start ) / 60
+    execution_time = (time_end - time_start) / 60
     # Print the execution time
     print(f"Execution time: {execution_time} min")
-
