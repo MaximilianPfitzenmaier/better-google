@@ -134,14 +134,14 @@ class Database:
             self.connection.commit()
             return self.cursor.fetchone()
         except Exception as err:
-            print(err.args[0])
+            print('Error adding doc to db:\n' + err.args[0])
             self.connection.rollback()
 
             return
 
     def push_to_frontier(self, url):
         """
-        Push a new value to the end of the frontier. Will only add unique values, duplicates will be rejected.
+        Push a new value to the frontier. Will only add unique values, duplicates will be rejected.
 
         Parameters:
         - url (string): The url to add to the frontier.
@@ -150,18 +150,17 @@ class Database:
             INSERT INTO frontier 
             SELECT %s
             WHERE NOT EXISTS (
-                SELECT 1 
-                FROM frontier
-                WHERE url = %s
-                UNION ALL
                 SELECT 1
                 FROM visited_urls
                 WHERE url = %s )
         """
-
-        self.cursor.execute(sql, (url, url, url))
-        # print(self.cursor.statusmessage)
-        self.connection.commit()
+        try:
+            self.cursor.execute(sql, (url, url))
+            # print(self.cursor.statusmessage)
+            self.connection.commit()
+        except Exception as err:
+            # print(err.args[0])
+            self.connection.rollback()
 
     def get_from_frontier(self, amount):
         """
