@@ -21,6 +21,7 @@ import threading
 # Create a thread-local instance of WordNet and a lock
 wordnet_lock = threading.Lock()
 db_lock = threading.Lock()
+kw_model = keybert.KeyBERT()
 
 # Define a thread subclass for crawling URLs
 
@@ -589,10 +590,7 @@ def get_keywords(content, normalized_title, normalized_description):
     if normalized_description is not None:
         concat += normalized_description
 
-    kw_model = keybert.KeyBERT()
-    keywords_a = kw_model.extract_keywords(
-        concat, top_n=20, keyphrase_ngram_range=(1, 2)
-    )
+    keywords_a = kw_model.extract_keywords(concat, top_n=20)
     keywords = [key[0] for key in keywords_a]
 
     return keywords
