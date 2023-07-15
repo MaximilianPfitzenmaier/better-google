@@ -2,6 +2,7 @@
 import requests
 import re
 import nltk
+import keybert
 import threading
 from langdetect import detect
 from time import sleep
@@ -588,23 +589,11 @@ def get_keywords(content, normalized_title, normalized_description):
     if normalized_description is not None:
         concat += normalized_description
 
-    # Create an instance of the Rake object
-    r = Rake()
-    r.extract_keywords_from_text(concat)
-    ranked_phrases_with_scores = r.get_ranked_phrases_with_scores()
-
-    # Filter out phrases with more than one word
-    single_words = [
-        phrase
-        for score, phrase in ranked_phrases_with_scores
-        if len(phrase.split()) == 1
-    ]
-
-    # Deduplicate keywords (case-insensitive)
-    unique_keywords = list(set(map(str.lower, single_words)))
-
-    # Limit to the top single words
-    keywords = unique_keywords
+    kw_model = keybert.KeyBERT()
+    keywords_a = kw_model.extract_keywords(
+        concat, top_n=20, keyphrase_ngram_range=(1, 2)
+    )
+    keywords = [key[0] for key in keywords_a]
 
     return keywords
 
