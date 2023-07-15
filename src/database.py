@@ -32,16 +32,16 @@ class Database:
         Connect to the PostgreSQL database server
         """
 
-        # with open('database.txt', 'r') as f:
-        #     db = f.read().splitlines()
+        with open('src/database.txt', 'r') as f:
+            db = f.read().splitlines()
 
         self.connection = psycopg2.connect(
-            host="localhost",
-            database="postgres",
-            user="postgres",
-            password="root",
+            host=db[0],
+            database=db[1],
+            user=db[2],
+            password=db[3],
         )
-        # f.close()
+        f.close()
         self.cursor = self.connection.cursor()
 
     def query(self, query):
@@ -119,21 +119,24 @@ class Database:
                     element.get("normalized_title", None),
                     element.get("keywords", None),
                     element.get("description", None),
-                    element.get("normalized_description", None),
-                    element.get("internal_links", None),
-                    element.get("external_links", None),
+                    element.get("normalized_description", None)
+                    if element.get("normalized_description", None)
+                    else [],
+                    element.get("internal_links", []),
+                    element.get("external_links", []),
                     element.get("in_links", None),
                     element.get("out_links", None),
                     element.get("content", None),
                     element.get("img", None),
                 ),
             )
-            # print(self.cursor.statusmessage)
+            print(self.cursor.statusmessage)
             self.connection.commit()
             return self.cursor.fetchone()
         except Exception as err:
-            # print(err.args[0])
+            print(err.args[0])
             self.connection.rollback()
+
             return
 
     def push_to_frontier(self, url):
@@ -160,27 +163,45 @@ class Database:
         # print(self.cursor.statusmessage)
         self.connection.commit()
 
-    def pop_frontier(self):
+    def get_from_frontier(self, amount):
         """
-        Get and remove an entry from the frontier.
+        Gets entries from the frontier.
+
+        Parameters:
+        - amount (int): The amount of entries we'd like to receive
 
         Returns:
-        A url (string) or None if the frontier is empty.
+        A list of url (string) or None if the frontier is empty.
+        """
+        sql = """
+            SELECT DISTINCT ON (substring(url from '(?<=\/\/)[\w\d\.-]*'))
+                url
+            FROM frontier
+            LIMIT %s
+        """
+        self.cursor.execute(sql, (amount,))
+        # print(self.cursor.statusmessage)
+        res = self.cursor.fetchall()
+        self.connection.commit()
+        return res if res is None else [x[0] for x in res]
+
+    def remove_from_frontier(self, url):
+        """
+        Remove entries from the frontier.
+
+        Parameters:
+        - urls (string[]): The list of urls to remove.
+
+        Returns:
+        None
         """
         sql = """
             DELETE FROM frontier
-            WHERE url = (
-                SELECT url
-                FROM frontier
-                LIMIT 1
-            )
-            RETURNING url
+            WHERE url = %s
         """
-        self.cursor.execute(sql)
-        # print(self.cursor.statusmessage)
-        res = self.cursor.fetchone()
+        self.cursor.execute(sql, (url,))
         self.connection.commit()
-        return res if res is None else res[0]
+        return None
 
     def check_frontier_empty(self):
         """
@@ -256,7 +277,6 @@ class Database:
         return res[0] if res else []
 
     def update_domain_sitemap(self, domain, domain_links):
-
         try:
             sql = """
                 DELETE FROM sitemap 

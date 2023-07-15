@@ -2,6 +2,7 @@
 import requests
 import re
 import nltk
+import threading
 from langdetect import detect
 from time import sleep
 from urllib.parse import urljoin
@@ -13,23 +14,39 @@ from nltk.tokenize import word_tokenize, sent_tokenize
 from nltk.corpus import stopwords
 from rake_nltk import Rake
 from datetime import datetime
+import threading
+
+
+# Create a thread-local instance of WordNet and a lock
+wordnet_lock = threading.Lock()
+db_lock = threading.Lock()
+
+# Define a thread subclass for crawling URLs
+
+
+class CrawlThread(threading.Thread):
+    def __init__(self, crawler, url):
+        super().__init__()
+        self.crawler = crawler
+        self.url = url
+
+    def run(self):
+        self.crawler.crawl_url(self.url)
 
 
 class Crawler:
     initial_frontier = [
-        'https://is.mpg.de/en/publications?',
-        'https://uni-tuebingen.deen/',
-        'https://uni-tuebingen.de/en/facilities/central-institutions/university-sports-center/home/',
-        'https://hoelderlinturm.de/english/',
+        'https://en.stuttgart.de/',
+        'https://en.wikipedia.org/wiki/Stuttgart',
+        'https://www.stuttgart-tourist.de/en',
         'https://www.tuebingen.de/en/',
         'https://hoelderlinturm.de/english/',
         'https://www.my-stuwe.de/en/',
         # # reichen solche datenbanken?
-
         'https://uni-tuebingen.de/en/',
         'https://civis.eu/en/about-civis/universities/eberhard-karls-universitat-tubingen',
         'https://tuebingenresearchcampus.com/en/',
-        'https://is.mpg.de/en/',
+        # 'https://is.mpg.de/en/',
         # # noch mehr guides, decken aber gut ab - zumal eh die einzelnen seiten idr nur auf deutsch sind
         'https://www.tripadvisor.com/Attractions-g198539-Activities-Tubingen_Baden_Wurttemberg.html',
         'https://www.medizin.uni-tuebingen.de/en-de/',
@@ -47,13 +64,17 @@ class Crawler:
         'https://www.engelvoelkers.com/en-de/properties/rent-apartment/baden-wurttemberg/tubingen-kreis/',
         'https://integreat.app/tuebingen/en/news/tu-news',
         'https://tunewsinternational.com/category/news-in-english/',  # news
-        # # reichen solche guides?
-        # 'https://guide.michelin.com/en/de/baden-wurttemberg/tbingen/restaurants',
+        # # # reichen solche guides?
+        # # 'https://guide.michelin.com/en/de/baden-wurttemberg/tbingen/restaurants',
+        # 'https://uni-tuebingen.deen/',
+        'https://uni-tuebingen.de/en/facilities/central-institutions/university-sports-center/home/',
+        # 'https://is.mpg.de/en/publications?',
     ]
     # our blacklist
-    blacklist = ['https://www.tripadvisor.com/',
-                 'https://www.yelp.com/',
-                 ]
+    blacklist = [
+        'https://www.tripadvisor.com/',
+        'https://www.yelp.com/',
+    ]
 
     db = None
 
@@ -64,7 +85,11 @@ class Crawler:
         nltk.download('wordnet')
         nltk.download('stopwords')
         self.min_depth_limit = 0
-        self.max_depth_limit = 2
+        self.max_depth_limit = 1
+        self.max_threads = 10
+        self.base_crawl_delay = 2.0
+        # self.wordnet_local = threading.local()
+        # self.wordnet_local.lock = threading.Lock()
 
         # If the frontier is empty, we load it with our initial frontier
         if self.db.check_frontier_empty():
@@ -85,16 +110,16 @@ class Crawler:
         print(f"ID: {web_page['id']}")
         print(f"URL: {web_page['url']}")
         print(f"Title: {web_page['title']}")
-        print(f"Normalized Title: {web_page['normalized_title']}")
-        print(f"Keywords: {web_page['keywords']}")
-        print(f"Description: {web_page['description']}")
-        print(f"Normalized Description: {web_page['normalized_description']}")
+        # print(f"Normalized Title: {web_page['normalized_title']}")
+        # print(f"Keywords: {web_page['keywords']}")
+        # print(f"Description: {web_page['description']}")
+        # print(f"Normalized Description: {web_page['normalized_description']}")
         # print(f"Internal Links: {web_page['internal_links']}")
         # print(f"External Links: {web_page['external_links']}")
         # print(f"In Links: {web_page['in_links']}")
         # print(f"Out Links: {web_page['out_links']}")
         # print(f"Content: {web_page['content']}")
-        print(f"Image URL: {web_page['img']}")
+        # print(f"Image URL: {web_page['img']}")
 
         print("--------------------")
 
@@ -129,140 +154,175 @@ class Crawler:
         """
 
         print(f'LETS GO: {url}')
+
         # Code to measure the execution time
         if urljoin(url, '/') not in self.blacklist:
-            try:
+            # Make an HTTP GET request to the URL
+            response = requests.get(url)
+            parsed_url = urlparse(url)
+            host = parsed_url.netloc
+            full_host = (
+                f"{parsed_url.scheme}://{host}"
+                if f"{parsed_url.scheme}://{host}".endswith('/')
+                else f"{parsed_url.scheme}://{host}/"
+            )
 
-                # Make an HTTP GET request to the URL
-                response = requests.get(url)
-                parsed_url = urlparse(url)
-                host = parsed_url.netloc
-                full_host = f"{parsed_url.scheme}://{host}" if f"{parsed_url.scheme}://{host}".endswith(
-                    '/') else f"{parsed_url.scheme}://{host}/"
+            # Check if the request is successful (status code 200)
+            if response.status_code == 200:
+                # Check if crawling is allowed and if a delay is set
+                allowed_delay = is_crawling_allowed(
+                    self.base_crawl_delay, url, self.user_agent
+                )
+                allowed = allowed_delay[0]
+                crawl_delay = (
+                    allowed_delay[1] if allowed_delay[1] else self.base_crawl_delay
+                )
 
-                # Check if the request is successful (status code 200)
-                if response.status_code == 200:
-                    # Check if crawling is allowed and if a delay is set
-                    allowed_delay = is_crawling_allowed(url, self.user_agent)
-                    allowed = allowed_delay[0]
-                    crawl_delay = allowed_delay[1] if allowed_delay[1] else 0.5
+                if allowed:
+                    # Use BeautifulSoup to parse the HTML content
+                    soup = BeautifulSoup(response.content, 'html.parser')
 
-                    if allowed:
-                        # Use BeautifulSoup to parse the HTML content
-                        soup = BeautifulSoup(response.content, 'html.parser')
+                    # only crawl the page content, if the content is english
+                    if is_page_language_english(soup, url):
+                        # get the sitemap for the host from the sitemap table
+                        domain_internal_links = get_sitemap_from_host(self, full_host)
+                        domain_external_links = []
 
-                        # only crawl the page content, if the content is english
-                        if is_page_language_english(soup, url):
+                        # Extract the title, keywords, description, internal/external links, content
+                        index = None
+                        title = ""
+                        title = get_page_title(soup)
 
-                            # get the sitemap for the host from the sitemap table
-                            domain_internal_links = get_sitemap_from_host(
-                                self, full_host)
+                        normalized_title = ""
+                        normalized_title = (
+                            get_normalized_title(title) if title else None
+                        )
 
+                        description = ""
+                        description = get_description(soup)
+                        normalized_description = ""
+                        normalized_description = (
+                            get_normalized_description(description)
+                            if description
+                            else None
+                        )
+
+                        try:
+                            internal_links = []
+                            external_links = []
+                            domain_internal_links = []
                             domain_external_links = []
 
-                            # Extract the title, keywords, description, internal/external links, content
-                            index = None
-
-                            title = get_page_title(soup)
-
-                            normalized_title = get_normalized_title(
-                                title) if title else None
-
-                            description = get_description(soup)
-
-                            normalized_description = get_normalized_description(
-                                description) if description else None
-
                             links = get_internal_external_links(
-                                soup, domain_internal_links, domain_external_links, full_host, self)
+                                soup,
+                                domain_internal_links,
+                                domain_external_links,
+                                full_host,
+                                self,
+                            )
 
                             internal_links = links[0]
                             external_links = links[1]
                             domain_internal_links = links[2]
-
                             domain_external_links = links[3]
-
-                            set_sitemap_to_host(
-                                self, full_host, domain_internal_links)
-
-                            content = get_page_content(soup)
-
-                            keywords = get_keywords(
-                                content, normalized_title, normalized_description)
-
-                            in_links = []
-
-                            out_links = []
-
-                            img = get_image_url(soup, url)
-
-                            # Create the web page object
-                            web_page = create_web_page_object(
-                                url,
-                                index,
-                                title,
-                                normalized_title,
-                                keywords,
-                                description,
-                                normalized_description,
-                                internal_links,
-                                external_links,
-                                in_links,
-                                out_links,
-                                content,
-                                img,
-                            )
-
-                            # Save to the database
-                            entry = self.db.add_document(web_page)
-                            web_page['id'] = entry[0]
-
-                            #! Print the details of the web page
-                            # self.print_web_page(web_page)
-
-                            # Add the URL to the visited URLs list
-                            self.db.add_visited_url(web_page['id'], url)
-
-                            # Delay before crawling the next page
-                            sleep(crawl_delay)
-
-                            #! we dont push to frontier here. We push in get_internal_external_links after checking the content for each page
-                            # Add all the internal links to the frontier
-                            # for int_link in domain_internal_links:
-                            #     if int_link is not url or int_link is not url[:-1]:
-                            #         self.db.push_to_frontier(int_link)
-                            # for ext_link in external_links:
-                            #     self.db.push_to_frontier(ext_link)
-
-                            # reset internal and external links array
-                            # self.internal_links = []
-                            # self.external_links = []
-
-                        else:
+                        except Exception as e:
                             print(
-                                f"Not an English page: {url} or doesnt contain Tuebingen"
+                                f"Exception occurred while intern extern : {url} | {e}"
                             )
-                    else:
-                        print(
-                            f"Error crawling: {url} | Allowed: {allowed} "
+
+                        set_sitemap_to_host(self, full_host, domain_internal_links)
+
+                        content = get_page_content(soup)
+
+                        try:
+                            keywords = get_keywords(
+                                content, normalized_title, normalized_description
+                            )
+                        except Exception as e:
+                            print(f"Exception occurred while keywords: {url} | {e}")
+
+                        in_links = []
+
+                        out_links = []
+
+                        img = get_image_url(soup, url)
+
+                        # Create the web page object
+                        web_page = create_web_page_object(
+                            id,
+                            url,
+                            index,
+                            title,
+                            normalized_title,
+                            keywords,
+                            description,
+                            normalized_description,
+                            internal_links,
+                            external_links,
+                            in_links,
+                            out_links,
+                            content,
+                            img,
                         )
+
+                        # Save to the database
+                        with db_lock:
+                            try:
+                                entry = self.db.add_document(web_page)
+                                # If the document is in the db already, we get None back
+                                web_page['id'] = None if entry is None else entry[0]
+                            except Exception as e:
+                                self.print_web_page(web_page)
+                                print(
+                                    f"Exception occurred while adding document: {url} | {e}\n"
+                                )
+
+                        with db_lock:
+                            try:
+                                # Add the URL to the visited URLs list
+                                if entry is not None:
+                                    self.db.add_visited_url(web_page['id'], url)
+                            except Exception as e:
+                                print(
+                                    f"Exception occurred while adding visitied: {url} | {e}"
+                                )
+
+                        # Delay before crawling the next page
+                        sleep(crawl_delay)
+
+                    else:
+                        print(f"Not an English page: {url} or doesnt contain Stuttgart")
                 else:
-                    print(
-                        f"Error crawling: {url} | Status: {response.status_code}"
-                    )
-            except Exception as e:
-                print(f"Exception occurred while crawling: {url} | {e}")
+                    print(f"Error crawling: {url} | Allowed: {allowed} ")
+            else:
+                print(f"Error crawling: {url} | Status: {response.status_code}")
+
         else:
             print(f"Domain blacklisted: {urljoin(url, '/')}")
 
-    # Start crawling all URL's in the frontier
-
+    #  Start crawling all URLs in the frontier
     def crawl(self):
+        threads = []
+
         while True:
-            next_url = self.db.pop_frontier()
-            if next_url is None:
-                break
-            self.crawl_url(next_url)
+            with db_lock:
+                next_urls = self.db.get_from_frontier(self.max_threads)
+                if next_urls is None:
+                    break
+
+            for url in next_urls:
+                thread = CrawlThread(self, url)
+                thread.start()
+                threads.append(thread)
+
+            # Wait for all remaining threads to complete
+            for thread in threads:
+                thread.join()
+
+            with db_lock:
+                for thread in threads:
+                    self.db.remove_from_frontier(thread.url)
+                    threads.remove(thread)
 
 
 def get_sitemap_from_host(self, domain):
@@ -275,12 +335,13 @@ def get_sitemap_from_host(self, domain):
     Returns:
     - list: The sitemap list of the domain, or an empty list if the host is not found.
     """
-    try:
-        sitemap = list(self.db.get_sitemap_from_domain(domain))
-        return sitemap
-    except Exception as e:
-        print(f"Exception occurred while getting sitemap: {domain} | {e}")
-        return []
+    with db_lock:
+        try:
+            sitemap = list(self.db.get_sitemap_from_domain(domain))
+            return sitemap
+        except Exception as e:
+            print(f"Exception occurred while getting sitemap: {domain} | {e}")
+            return []
 
 
 def set_sitemap_to_host(self, domain, array_to_set):
@@ -294,13 +355,13 @@ def set_sitemap_to_host(self, domain, array_to_set):
     Returns:
     - list: the sitemap list of the domain.
     """
-    try:
-        # update the domain_internal_links
-        self.db.update_domain_sitemap(domain, array_to_set)
+    with db_lock:
+        try:
+            # update the domain_internal_links
+            self.db.update_domain_sitemap(domain, array_to_set)
 
-    except Exception as e:
-        print(
-            f"Exception occurred while setting sitemap: {domain} | {e}")
+        except Exception as e:
+            print(f"Exception occurred while setting sitemap: {domain} | {e}")
 
 
 def normalize_german_chars(text):
@@ -369,6 +430,7 @@ def is_page_language_english(soup, url):
 
 # Crawler Functions
 def create_web_page_object(
+    id,
     url,
     index,
     title,
@@ -407,7 +469,7 @@ def create_web_page_object(
     """
 
     return {
-        # 'id': page_id,
+        'id': 0,
         'url': url,
         'index': index,
         'title': title,
@@ -424,7 +486,7 @@ def create_web_page_object(
     }
 
 
-def is_crawling_allowed(url, user_agent):
+def is_crawling_allowed(base_crawl_delay, url, user_agent):
     """
     Checks if crawling is allowed for the given URL and user agent.
 
@@ -434,7 +496,7 @@ def is_crawling_allowed(url, user_agent):
 
     Returns:
     - (bool): True if crawling is allowed, False otherwise.
-    - (float): The crawl delay in seconds if specified, 0.5 otherwise.
+    - (float): The crawl delay in seconds if specified, base_crawl_delay otherwise.
     """
     base_url = urljoin(url, '/')
     robots_url = urljoin(base_url, 'robots.txt')
@@ -450,10 +512,10 @@ def is_crawling_allowed(url, user_agent):
         if delay:
             crawl_delay = delay
         else:
-            crawl_delay = 0.5
+            crawl_delay = base_crawl_delay
         return True, crawl_delay
     else:
-        return False, 0.5
+        return False, base_crawl_delay
 
 
 def get_page_title(soup):
@@ -486,22 +548,23 @@ def get_normalized_title(title):
     # Normalize German characters to English equivalents
     content = normalize_german_chars(content)
 
-    # Tokenize the content
-    tokens = word_tokenize(content)
+    with wordnet_lock:
+        # Tokenize the content
+        tokens = word_tokenize(content)
 
-    # Remove stopwords
-    stopwords_set = set(stopwords.words('english'))
-    filtered_tokens = [token for token in tokens if token not in stopwords_set]
+        # Remove stopwords
+        stopwords_set = set(stopwords.words('english'))
+        filtered_tokens = [token for token in tokens if token not in stopwords_set]
 
-    # Lemmatize the content
-    lemmatizer = WordNetLemmatizer()
-    lemmatized_content = [lemmatizer.lemmatize(
-        token) for token in filtered_tokens]
+        # Lemmatize the content
+        lemmatizer = WordNetLemmatizer()
 
-    # Convert the lemmatized content back to a string
-    lemmatized_content_str = ' '.join(lemmatized_content)
+        lemmatized_content = [lemmatizer.lemmatize(token) for token in filtered_tokens]
 
-    return lemmatized_content_str
+        # Convert the lemmatized content back to a string
+        lemmatized_content_str = ' '.join(lemmatized_content)
+
+        return lemmatized_content_str
 
 
 def get_keywords(content, normalized_title, normalized_description):
@@ -583,15 +646,16 @@ def get_normalized_description(description):
     stopwords_set = set(stopwords.words('english'))
     filtered_tokens = [token for token in tokens if token not in stopwords_set]
 
-    # Lemmatize the content
-    lemmatizer = WordNetLemmatizer()
-    lemmatized_content = [lemmatizer.lemmatize(
-        token) for token in filtered_tokens]
+    with wordnet_lock:
+        # Lemmatize the content
+        lemmatizer = WordNetLemmatizer()
 
-    # Convert the lemmatized content back to a string
-    lemmatized_content_str = ' '.join(lemmatized_content)
+        lemmatized_content = [lemmatizer.lemmatize(token) for token in filtered_tokens]
 
-    return lemmatized_content_str
+        # Convert the lemmatized content back to a string
+        lemmatized_content_str = ' '.join(lemmatized_content)
+
+        return lemmatized_content_str
 
 
 def has_tuebingen_content(url):
@@ -601,12 +665,15 @@ def has_tuebingen_content(url):
 
         # Check if the request is successful (status code 200)
         if response.status_code == 200:
-            is_allowed = is_crawling_allowed(url, user_agent)
+            is_allowed = is_crawling_allowed(2.0, url, user_agent)
             if is_allowed[0]:
                 # Use BeautifulSoup to parse the HTML content
                 soup = BeautifulSoup(response.content, 'html.parser')
 
-                if is_page_language_english(soup, url) and ('tuebingen' in str(soup) or 'Tuebingen' in str(soup) or 'tübingen' in str(soup) or 'Tübingen' in str(soup)):
+                # if is_page_language_english(soup, url) and ('tuebingen' in str(soup) or 'Tuebingen' in str(soup) or 'tübingen' in str(soup) or 'Tübingen' in str(soup)):
+                if is_page_language_english(soup, url) and (
+                    'stuttgart' in str(soup) or 'Stuttgart' in str(soup)
+                ):
                     return True
                 else:
                     return False
@@ -618,7 +685,9 @@ def has_tuebingen_content(url):
         print(f"Exception occurred while crawling: {url} | {e}")
 
 
-def get_internal_external_links(soup, domain_internal_links, domain_external_links, host, self):
+def get_internal_external_links(
+    soup, domain_internal_links, domain_external_links, host, self
+):
     """
     Extracts the internal and external links from a web page from the given BeautifulSoup object.
 
@@ -635,24 +704,47 @@ def get_internal_external_links(soup, domain_internal_links, domain_external_lin
     base_url = host
     internal_links = []
     external_links = []
-
     for link in soup.find_all('a'):
         href = link.get('href')
-        if href and not href.startswith('mailto:') and not href.startswith('tel:') and not href.startswith('javascript:') and not href.endswith('.jpg') and not href.endswith('.webp'):
+        if (
+            href
+            and not href.startswith('mailto:')
+            and not href.startswith('tel:')
+            and not href.startswith('javascript:')
+            and not href.endswith('.jpg')
+            and not href.endswith('.webp')
+        ):
             if href.startswith('http'):
                 external_link = href
-                if external_link not in external_links and base_url not in self.blacklist and is_page_language_english(soup, external_link):
-                    external_links.append(external_link)
-                    domain_external_links.append(external_link)
+                # check if we should push the url to the frontier
+                # check if not in blacklist
+                if base_url not in self.blacklist:
+                    # check if depth is fine
+                    depth = calculate_url_depth(external_link)
+                    if depth <= self.max_depth_limit and depth >= self.min_depth_limit:
+                        # check if not in internal array
+                        if base_url + 'en' in external_link:
+                            # check if the page content is english
+                            if is_page_language_english(soup, external_link):
+                                # check if the content has somthing todo with tuebingen
+                                if has_tuebingen_content(external_link):
+                                    # check if not in sitemap
+                                    if external_link not in domain_internal_links:
+                                        with db_lock:
+                                            # frontier push here
+                                            self.db.push_to_frontier(external_link)
+
+                external_links.append(external_link)
+                #        domain_external_links.append(external_link)
             elif not href.startswith('#') and not '#' in href:
                 internal_link = base_url[:-1] + href
 
                 # check if we should push the url to the frontier
-                # check if depth is fine
-                depth = calculate_url_depth(internal_link)
-                if depth <= self.max_depth_limit and depth >= self.min_depth_limit:
-                    # check if not in blacklist
-                    if base_url not in self.blacklist:
+                # check if not in blacklist
+                if base_url not in self.blacklist:
+                    # check if depth is fine
+                    depth = calculate_url_depth(internal_link)
+                    if depth <= self.max_depth_limit and depth >= self.min_depth_limit:
                         # check if not in internal array
                         if base_url + 'en' in internal_link:
                             # check if the page content is english
@@ -661,8 +753,9 @@ def get_internal_external_links(soup, domain_internal_links, domain_external_lin
                                 if has_tuebingen_content(internal_link):
                                     # check if not in sitemap
                                     if internal_link not in domain_internal_links:
-                                        # frontier push here
-                                        self.db.push_to_frontier(internal_link)
+                                        with db_lock:
+                                            # frontier push here
+                                            self.db.push_to_frontier(internal_link)
 
                 # add all internal links to web_page_property
                 internal_links.append(internal_link)
@@ -670,7 +763,12 @@ def get_internal_external_links(soup, domain_internal_links, domain_external_lin
                 # Add the URL to the domain sitemap
                 domain_internal_links.append(internal_link)
 
-    return (list(set(internal_links)), list(set(external_links)),  list(set(domain_internal_links)),  list(set(domain_external_links)))
+    return (
+        list(set(internal_links)),
+        list(set(external_links)),
+        list(set(domain_internal_links)),
+        list(set(domain_external_links)),
+    )
 
 
 def calculate_url_depth(url):
@@ -779,17 +877,19 @@ def get_page_content(soup):
     # Tokenize the content
     tokens = word_tokenize(content)
 
-    # Lemmatize the content
-    lemmatizer = WordNetLemmatizer()
-    lemmatized_content = []
-    for token in tokens:
-        lemma = lemmatizer.lemmatize(token)
-        lemmatized_content.append(lemma)
+    with wordnet_lock:
+        # Lemmatize the content
+        lemmatizer = WordNetLemmatizer()
 
-    # Convert the lemmatized content back to a string
-    lemmatized_content_str = ' '.join(lemmatized_content)
+        lemmatized_content = []
+        for token in tokens:
+            lemma = lemmatizer.lemmatize(token)
+            lemmatized_content.append(lemma)
 
-    return lemmatized_content_str
+        # Convert the lemmatized content back to a string
+        lemmatized_content_str = ' '.join(lemmatized_content)
+
+        return lemmatized_content_str
 
 
 def get_image_url(soup, url):
@@ -804,12 +904,10 @@ def get_image_url(soup, url):
     - str: The og:image URL if found, otherwise the og:twitter image URL if found, otherwise the favicon URL, or an empty string if both are not found.
     """
     # Find the og:twitter image tag
-    og_image_tag = soup.find(
-        "meta", attrs={"property": "og:image"})
+    og_image_tag = soup.find("meta", attrs={"property": "og:image"})
 
     # Find the og:twitter image tag
-    twitter_image_tag = soup.find(
-        "meta", attrs={"property": "twitter:imag"})
+    twitter_image_tag = soup.find("meta", attrs={"property": "twitter:imag"})
 
     # Find the favicon tag
     favicon_tag = soup.find("link", rel="icon")
@@ -818,13 +916,21 @@ def get_image_url(soup, url):
     if og_image_tag is not None:
         og_image_url = og_image_tag.get("content", "")
         if og_image_url:
-            return og_image_url if og_image_url.startswith('http') else 'https:' + og_image_url
+            return (
+                og_image_url
+                if og_image_url.startswith('http')
+                else 'https:' + og_image_url
+            )
 
     # Extract the twitter:image URL
     elif twitter_image_tag is not None:
         og_image_url = twitter_image_tag.get("content", "")
         if og_image_url:
-            return og_image_url if og_image_url.startswith('http') else urljoin(url, '/')[:-1] + og_image_url
+            return (
+                og_image_url
+                if og_image_url.startswith('http')
+                else urljoin(url, '/')[:-1] + og_image_url
+            )
 
     # Extract the favicon URL
     elif favicon_tag is not None:
