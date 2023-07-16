@@ -130,7 +130,7 @@ class Database:
                     element.get("img", None),
                 ),
             )
-            print(self.cursor.statusmessage)
+            # print(self.cursor.statusmessage)
             self.connection.commit()
             return self.cursor.fetchone()
         except Exception as err:

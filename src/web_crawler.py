@@ -293,7 +293,7 @@ class Crawler:
                         sleep(crawl_delay)
 
                     else:
-                        print(f"Not an English page: {url} or doesnt contain Stuttgart")
+                        print(f"Not an English page: {url} or doesnt contain Tübingen")
                 else:
                     print(f"Error crawling: {url} | Allowed: {allowed} ")
             else:
@@ -657,10 +657,15 @@ def has_tuebingen_content(url):
                 # Use BeautifulSoup to parse the HTML content
                 soup = BeautifulSoup(response.content, 'html.parser')
 
-                # if is_page_language_english(soup, url) and ('tuebingen' in str(soup) or 'Tuebingen' in str(soup) or 'tübingen' in str(soup) or 'Tübingen' in str(soup)):
                 if is_page_language_english(soup, url) and (
-                    'stuttgart' in str(soup) or 'Stuttgart' in str(soup)
+                    'tuebingen' in str(soup)
+                    or 'Tuebingen' in str(soup)
+                    or 'tübingen' in str(soup)
+                    or 'Tübingen' in str(soup)
                 ):
+                    # if is_page_language_english(soup, url) and (
+                    # 'stuttgart' in str(soup) or 'Stuttgart' in str(soup)
+                    # ):
                     return True
                 else:
                     return False
