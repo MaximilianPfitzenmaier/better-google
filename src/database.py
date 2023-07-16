@@ -218,6 +218,38 @@ class Database:
         self.connection.commit()
         return True if res is None else False
 
+    def create_inoutlinks(self):
+        """
+        Update the in_links and out_links fields on all documents.
+
+        Returns:
+        None
+        """
+        sql = """
+            UPDATE documents 
+            SET
+                out_links = (internal_links || external_links),
+                in_links = subquery.aggregated_ids
+            FROM (
+                SELECT
+                    d.id,
+                    array_agg(d2.id) AS aggregated_ids
+                FROM
+                    documents AS d
+                CROSS JOIN LATERAL (
+                    SELECT id
+                    FROM documents AS d2
+                    WHERE d.url = ANY (d2.external_links)
+                ) AS d2
+                GROUP BY d.id
+            ) AS subquery
+            WHERE documents.id = subquery.id
+        """
+        self.cursor.execute(sql)
+        print('Tried populating the in/out_links fields: ' + self.cursor.statusmessage)
+        self.connection.commit()
+        return None
+
     def is_url_visited(self, url):
         """
         Queries the visited_urls table and checks whether the url has been visited before.
@@ -323,7 +355,7 @@ class Database:
                 norm_description TEXT,
                 internal_links   TEXT[],
                 external_links   TEXT[],
-                in_links         TEXT[],
+                in_links         INT[],
                 out_links        TEXT[],
                 content          TEXT,
                 img              BYTEA

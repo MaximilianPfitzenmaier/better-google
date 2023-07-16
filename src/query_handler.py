@@ -32,6 +32,15 @@ class Query:
         """
         self.index = self.db.fetch_index(self.prepared_query.split(' '))
 
+    def link_based_ranking():
+        """
+        Creates a ranking based on the in_links of the documents in the index.
+
+        Returns:
+        The sorted index based on in_link measures as a list of tuples of (entry, rating).
+        """
+        pass
+
     def get_search_results(self, amount):
         """
         Gets the top #amount search results from our database
@@ -42,5 +51,9 @@ class Query:
         self.get_index()
 
         # At this point we should apply some relevancy metrics and sort the results by importance
+        link_based_sorted_index = self.link_based_ranking()
+
         # For now, I'll just return the results
-        self.search_results = self.db.fetch_docs_by_id(self.index)[:amount]
+        self.search_results = self.db.fetch_docs_by_id(
+            [x[0] for x in link_based_sorted_index]
+        )[:amount]
