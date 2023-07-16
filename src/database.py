@@ -55,25 +55,6 @@ class Database:
         self.cursor.execute(query)
         return self.cursor.fetchall()
 
-    def fetch_docs_by_id(self, doc_ids):
-        """
-        Fetch all the documents according to the list of ids given.
-
-        Parameters:
-        - doc_ids (int[]): An array of ids of documents.
-
-        Returns:
-        The list of documents gathered from our database.
-        """
-        sql = """
-            SELECT id, url, title, description, img
-            FROM documents
-            WHERE id = ANY(%s)
-        """
-        self.cursor.execute(sql, (doc_ids,))
-        # print(self.cursor.statusmessage)
-        return self.cursor.fetchall()
-
     def fetch_index(self, search_words):
         """
         Fetch all the indices of documents which contain our search_words somewhere.
@@ -85,19 +66,13 @@ class Database:
         The list of document ids that match our search.
         """
         sql = """
-            WITH search_table AS (
-                SELECT '%%' || unnest(%s) || '%%'
-            )
-            SELECT id
+            SELECT id, url, title, description, img, in_links
             FROM documents
-            WHERE content ILIKE ANY (SELECT * FROM search_table)
-                OR norm_title ILIKE ANY (SELECT * FROM search_table)
-                OR norm_description ILIKE ANY (SELECT * FROM search_table)
-                OR url ILIKE ANY (SELECT * FROM search_table)
+            WHERE keywords && %s
         """
         self.cursor.execute(sql, (search_words,))
         # print(self.cursor.statusmessage)
-        return [r[0] for r in self.cursor.fetchall()]
+        return self.cursor.fetchall()
 
     def add_document(self, element):
         """
@@ -218,6 +193,38 @@ class Database:
         self.connection.commit()
         return True if res is None else False
 
+    def create_inoutlinks(self):
+        """
+        Update the in_links and out_links fields on all documents.
+
+        Returns:
+        None
+        """
+        sql = """
+            UPDATE documents 
+            SET
+                out_links = (internal_links || external_links),
+                in_links = subquery.aggregated_ids
+            FROM (
+                SELECT
+                    d.id,
+                    array_agg(d2.id) AS aggregated_ids
+                FROM
+                    documents AS d
+                CROSS JOIN LATERAL (
+                    SELECT id
+                    FROM documents AS d2
+                    WHERE d.url = ANY (d2.external_links)
+                ) AS d2
+                GROUP BY d.id
+            ) AS subquery
+            WHERE documents.id = subquery.id
+        """
+        self.cursor.execute(sql)
+        print('Tried populating the in/out_links fields: ' + self.cursor.statusmessage)
+        self.connection.commit()
+        return None
+
     def is_url_visited(self, url):
         """
         Queries the visited_urls table and checks whether the url has been visited before.
@@ -323,7 +330,7 @@ class Database:
                 norm_description TEXT,
                 internal_links   TEXT[],
                 external_links   TEXT[],
-                in_links         TEXT[],
+                in_links         INT[],
                 out_links        TEXT[],
                 content          TEXT,
                 img              BYTEA

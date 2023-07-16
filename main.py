@@ -10,11 +10,13 @@ if __name__ == '__main__':
     # db.drop_all_tables()
 
     crawler = src.web_crawler.Crawler(db)
-    crawler.crawl()
-    # test_query = input("Query: ")
-    # query = Query(test_query, db)
-    # query.get_search_results(100)
-    # print(query.search_results)
+    # crawler.crawl()
+    # crawler.create_inout_links()
+
+    test_query = input("Query: ")
+    query = src.query_handler.Query(test_query, db)
+    query.get_search_results(100)
+    print(query.search_results)
 
     # Calculate the execution time
     time_end = time.time()

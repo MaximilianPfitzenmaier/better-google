@@ -326,6 +326,12 @@ class Crawler:
                     self.db.remove_from_frontier(thread.url)
                     threads.remove(thread)
 
+    def create_inout_links(self):
+        """
+        Populates the in_links and out_links fields in our database.
+        """
+        self.db.create_inoutlinks()
+
 
 def get_sitemap_from_host(self, domain):
     """
