@@ -1,14 +1,23 @@
-from database import Database
-from web_crawler import Crawler
-from query_handler import Query
+import src.database
+import src.web_crawler
+import src.query_handler
+import time
 
 
 if __name__ == '__main__':
-    db = Database()
-    #db.drop_all_tables()
-    crawler = Crawler(db)
+    time_start = time.time()
+    db = src.database.Database()
+    # db.drop_all_tables()
+
+    crawler = src.web_crawler.Crawler(db)
     crawler.crawl()
-    #test_query = input("Query: ")
-    #query = Query(test_query, db)
-    #query.get_search_results(100)
-    #print(query.search_results)
+    # test_query = input("Query: ")
+    # query = Query(test_query, db)
+    # query.get_search_results(100)
+    # print(query.search_results)
+
+    # Calculate the execution time
+    time_end = time.time()
+    execution_time = (time_end - time_start) / 60
+    # Print the execution time
+    print(f"Execution time: {execution_time} min")
