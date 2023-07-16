@@ -37,12 +37,18 @@ class Query:
         Creates a ranking based on the in_links of the documents in the index.
 
         Returns:
-        The sorted index based on in_link measures as a list of tuples of (entry, rating).
+        None
         """
-        tuples = [(doc[0], len(doc[1])) for doc in self.index]
-        max_rank = max(tuples, key=lambda doc: doc[1])
-        tuples = [(doc[0], doc[1] / len) for doc in self.index]
-        return tuples.sort(key=lambda doc: doc[1], reverse=True)
+        max_rank = (
+            len(max(self.index, key=lambda doc: len(doc[5]))[5])
+            if len(self.index) > 0
+            else 1
+        )
+        self.index = [
+            (doc[0], doc[1], doc[2], doc[3], doc[4], len(doc[5]) / max_rank)
+            for doc in self.index
+        ]
+        self.index.sort(key=lambda doc: doc[5], reverse=True)
 
     def get_search_results(self, amount):
         """
@@ -54,9 +60,7 @@ class Query:
         self.get_index()
 
         # At this point we should apply some relevancy metrics and sort the results by importance
-        link_based_sorted_index = self.link_based_ranking()
+        self.link_based_ranking()
 
         # For now, I'll just return the results
-        self.search_results = self.db.fetch_docs_by_id(
-            [x[0] for x in link_based_sorted_index]
-        )[:amount]
+        self.search_results = self.index[:amount]
