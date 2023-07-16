@@ -32,14 +32,17 @@ class Query:
         """
         self.index = self.db.fetch_index(self.prepared_query.split(' '))
 
-    def link_based_ranking():
+    def link_based_ranking(self):
         """
         Creates a ranking based on the in_links of the documents in the index.
 
         Returns:
         The sorted index based on in_link measures as a list of tuples of (entry, rating).
         """
-        pass
+        tuples = [(doc[0], len(doc[1])) for doc in self.index]
+        max_rank = max(tuples, key=lambda doc: doc[1])
+        tuples = [(doc[0], doc[1] / len) for doc in self.index]
+        return tuples.sort(key=lambda doc: doc[1], reverse=True)
 
     def get_search_results(self, amount):
         """

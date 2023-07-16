@@ -88,16 +88,13 @@ class Database:
             WITH search_table AS (
                 SELECT '%%' || unnest(%s) || '%%'
             )
-            SELECT id
+            SELECT id, in_links
             FROM documents
-            WHERE content ILIKE ANY (SELECT * FROM search_table)
-                OR norm_title ILIKE ANY (SELECT * FROM search_table)
-                OR norm_description ILIKE ANY (SELECT * FROM search_table)
-                OR url ILIKE ANY (SELECT * FROM search_table)
+            WHERE keywords && search_table
         """
         self.cursor.execute(sql, (search_words,))
         # print(self.cursor.statusmessage)
-        return [r[0] for r in self.cursor.fetchall()]
+        return [(r[0], r[1]) for r in self.cursor.fetchall()]
 
     def add_document(self, element):
         """
