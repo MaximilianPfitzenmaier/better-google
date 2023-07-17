@@ -55,12 +55,17 @@ class Query:
         self.index.sort(key=lambda doc: doc[5], reverse=True)
 
     def calculate_tf_idf(self):
+        """
+        Calculates the TF-IDF scores for a given list of documents.
 
-        documents = [(doc[0], doc[4]) for doc in self.index]
+        Returns:
+        List of TF_IDF scores for every document
+        """
+        documents = [doc[4] for doc in self.index]
         # Calculate term frequency (TF)
         tf_scores = []
         doc_word_counts = []
-        for doc_id, doc_content in documents:
+        for doc_content in documents:
             word_count = defaultdict(int)
             words = doc_content.split()
             for word in words:
@@ -93,7 +98,19 @@ class Query:
         return tf_idf_scores
 
     def rank_documents(self, tf_idf_scores):
+        """
+        Calculates the document scores based on the TF-IDF scores.
+        It sums up the TF-IDF scores for each document and uses the sum as the document score.
+
+        Returns:
+        ranked documents
+        """
         document_ids = [doc[0] for doc in self.index]
+        document_url = [doc[1] for doc in self.index]
+        document_title = [doc[2] for doc in self.index]
+        document_desc = [doc[3] for doc in self.index]
+        document_img = [doc[5] for doc in self.index]
+
         # Calculate document scores based on TF-IDF scores
         document_scores = []
         for score in tf_idf_scores:
@@ -104,7 +121,7 @@ class Query:
         ranked_documents = sorted(range(len(document_scores)), key=lambda k: document_scores[k], reverse=True)
 
         # Rank documents with their original IDs
-        ranked_documents_with_ids = [(document_ids[i], document_scores[i]) for i in ranked_documents]
+        ranked_documents_with_ids = [(document_ids[i], document_url[i], document_title[i], document_desc[i], document_img[i], document_scores[i]) for i in ranked_documents]
         return ranked_documents_with_ids
 
     def get_search_results(self, amount):
@@ -121,11 +138,7 @@ class Query:
 
         tf_idf_scores = self.calculate_tf_idf()
 
-        #returns array with tuples of (doc_id, ranking_score)
         ranked_documents = self.rank_documents(tf_idf_scores)
-
-        for doc_id, rank in ranked_documents:
-            print(f"Document {doc_id}: Rank {rank}")
 
         # For now, I'll just return the results
         self.search_results = ranked_documents[:amount]

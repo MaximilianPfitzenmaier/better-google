@@ -15,6 +15,8 @@ if __name__ == '__main__':
 
     test_query = input("Query: ")
     query = src.query_handler.Query(test_query, db)
+
+    # returns (doc_id, url, title, description, img, ranking_score)
     query.get_search_results(100)
     print(query.search_results)
 
