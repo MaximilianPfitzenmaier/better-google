@@ -118,11 +118,14 @@ class Query:
 
         # At this point we should apply some relevancy metrics and sort the results by importance
         #self.link_based_ranking()
+
         tf_idf_scores = self.calculate_tf_idf()
+
+        #returns array with tuples of (doc_id, ranking_score)
         ranked_documents = self.rank_documents(tf_idf_scores)
 
         for doc_id, rank in ranked_documents:
             print(f"Document {doc_id}: Rank {rank}")
 
         # For now, I'll just return the results
-        #self.search_results = self.index[:amount]
+        self.search_results = ranked_documents[:amount]
