@@ -2,6 +2,8 @@ import re
 import nltk
 import src.web_crawler
 from nltk.corpus import stopwords
+import math
+from collections import defaultdict
 
 
 class Query:
@@ -44,11 +46,83 @@ class Query:
             if len(self.index) > 0
             else 1
         )
+        if max_rank == 0:
+            max_rank = 1
         self.index = [
             (doc[0], doc[1], doc[2], doc[3], doc[4], len(doc[5]) / max_rank)
             for doc in self.index
         ]
         self.index.sort(key=lambda doc: doc[5], reverse=True)
+
+    def calculate_tf_idf(self):
+        """
+        Calculates the TF-IDF scores for a given list of documents.
+
+        Returns:
+        List of TF_IDF scores for every document
+        """
+        documents = [doc[4] for doc in self.index]
+        # Calculate term frequency (TF)
+        tf_scores = []
+        doc_word_counts = []
+        for doc_content in documents:
+            word_count = defaultdict(int)
+            words = doc_content.split()
+            for word in words:
+                word_count[word] += 1
+            doc_word_counts.append(word_count)
+
+            tf_score = {}
+            word_count_total = len(words)
+            for word, count in word_count.items():
+                tf_score[word] = count / word_count_total
+            tf_scores.append(tf_score)
+
+        # Calculate inverse document frequency (IDF)
+        idf_scores = {}
+        doc_count = len(documents)
+        for word_count in doc_word_counts:
+            for word in word_count.keys():
+                if word not in idf_scores:
+                    word_count_with_word = sum(1 for wc in doc_word_counts if word in wc)
+                    idf_scores[word] = math.log(doc_count / (1 + word_count_with_word))
+
+        # Calculate TF-IDF scores
+        tf_idf_scores = []
+        for tf_score in tf_scores:
+            tf_idf_score = {}
+            for word, tf in tf_score.items():
+                tf_idf_score[word] = tf * idf_scores[word]
+            tf_idf_scores.append(tf_idf_score)
+
+        return tf_idf_scores
+
+    def rank_documents(self, tf_idf_scores):
+        """
+        Calculates the document scores based on the TF-IDF scores.
+        It sums up the TF-IDF scores for each document and uses the sum as the document score.
+
+        Returns:
+        ranked documents
+        """
+        document_ids = [doc[0] for doc in self.index]
+        document_url = [doc[1] for doc in self.index]
+        document_title = [doc[2] for doc in self.index]
+        document_desc = [doc[3] for doc in self.index]
+        document_img = [doc[5] for doc in self.index]
+
+        # Calculate document scores based on TF-IDF scores
+        document_scores = []
+        for score in tf_idf_scores:
+            doc_score = sum(score.values())
+            document_scores.append(doc_score)
+
+        # Sort documents by score in descending order
+        ranked_documents = sorted(range(len(document_scores)), key=lambda k: document_scores[k], reverse=True)
+
+        # Rank documents with their original IDs
+        ranked_documents_with_ids = [(document_ids[i], document_url[i], document_title[i], document_desc[i], document_img[i], document_scores[i]) for i in ranked_documents]
+        return ranked_documents_with_ids
 
     def get_search_results(self, amount):
         """
@@ -60,7 +134,11 @@ class Query:
         self.get_index()
 
         # At this point we should apply some relevancy metrics and sort the results by importance
-        self.link_based_ranking()
+        #self.link_based_ranking()
+
+        tf_idf_scores = self.calculate_tf_idf()
+
+        ranked_documents = self.rank_documents(tf_idf_scores)
 
         # For now, I'll just return the results
-        self.search_results = self.index[:amount]
+        self.search_results = ranked_documents[:amount]

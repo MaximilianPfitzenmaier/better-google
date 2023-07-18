@@ -66,7 +66,7 @@ class Database:
         The list of document ids that match our search.
         """
         sql = """
-            SELECT id, url, title, description, img, in_links
+            SELECT id, url, title, description, content, img, in_links
             FROM documents
             WHERE keywords && %s
         """
