@@ -17,16 +17,11 @@ class Query:
         self.db = db
         self.user_query = user_query
 
-        # Should we even remove special characters?
-        temp_query = re.sub(r'[^\w\s]', '', user_query).lower()
-        temp_query = src.web_crawler.normalize_german_chars(user_query)
+        # Normalize and lemmatize the query
+        temp_query = src.web_crawler.normalize_text(self.user_query)
+        self.prepared_query = set(temp_query)
 
-        tokens = nltk.tokenize.word_tokenize(temp_query)
-        # remove stopwords
-        stopwords_set = set(stopwords.words('english'))
-        filtered_tokens = [token for token in tokens if token not in stopwords_set]
-
-        self.prepared_query = ' '.join(filtered_tokens)
+        print('Prepared query: ' + self.prepared_query)
 
     def get_index(self) -> None:
         """
@@ -84,7 +79,9 @@ class Query:
         for word_count in doc_word_counts:
             for word in word_count.keys():
                 if word not in idf_scores:
-                    word_count_with_word = sum(1 for wc in doc_word_counts if word in wc)
+                    word_count_with_word = sum(
+                        1 for wc in doc_word_counts if word in wc
+                    )
                     idf_scores[word] = math.log(doc_count / (1 + word_count_with_word))
 
         # Calculate TF-IDF scores
@@ -118,10 +115,22 @@ class Query:
             document_scores.append(doc_score)
 
         # Sort documents by score in descending order
-        ranked_documents = sorted(range(len(document_scores)), key=lambda k: document_scores[k], reverse=True)
+        ranked_documents = sorted(
+            range(len(document_scores)), key=lambda k: document_scores[k], reverse=True
+        )
 
         # Rank documents with their original IDs
-        ranked_documents_with_ids = [(document_ids[i], document_url[i], document_title[i], document_desc[i], document_img[i], document_scores[i]) for i in ranked_documents]
+        ranked_documents_with_ids = [
+            (
+                document_ids[i],
+                document_url[i],
+                document_title[i],
+                document_desc[i],
+                document_img[i],
+                document_scores[i],
+            )
+            for i in ranked_documents
+        ]
         return ranked_documents_with_ids
 
     def get_search_results(self, amount):
@@ -134,7 +143,7 @@ class Query:
         self.get_index()
 
         # At this point we should apply some relevancy metrics and sort the results by importance
-        #self.link_based_ranking()
+        # self.link_based_ranking()
 
         tf_idf_scores = self.calculate_tf_idf()
 

@@ -12,7 +12,7 @@ from urllib.robotparser import RobotFileParser
 from bs4 import BeautifulSoup
 from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import word_tokenize, sent_tokenize
-from nltk.corpus import stopwords
+from nltk.corpus import stopwords, wordnet
 from rake_nltk import Rake
 from datetime import datetime
 import threading
@@ -86,6 +86,7 @@ class Crawler:
         nltk.download('punkt')
         nltk.download('wordnet')
         nltk.download('stopwords')
+        nltk.download('averaged_perceptron_tagger')
         self.min_depth_limit = 0
         self.max_depth_limit = 2
         self.max_threads = 1
@@ -208,9 +209,7 @@ class Crawler:
                         domain_internal_links = links[2]
                         domain_external_links = links[3]
                     except Exception as e:
-                        print(
-                            f"Exception occurred while intern extern : {url} | {e}"
-                        )
+                        print(f"Exception occurred while intern extern : {url} | {e}")
 
                     set_sitemap_to_host(self, full_host, domain_internal_links)
 
@@ -218,23 +217,19 @@ class Crawler:
                     if not has_tuebingen_content(url):
                         print("Not a Tübingen page: exiting")
                         return  # Exit the function
-                   
+
                     index = None
                     title = ""
                     title = get_page_title(soup)
 
                     normalized_title = ""
-                    normalized_title = (
-                        get_normalized_title(title) if title else None
-                    )
+                    normalized_title = normalize_text(title) if title else None
 
                     description = ""
                     description = get_description(soup)
                     normalized_description = ""
                     normalized_description = (
-                        get_normalized_description(description)
-                        if description
-                        else None
+                        normalize_text(description) if description else None
                     )
 
                     content = get_page_content(soup)
@@ -542,42 +537,6 @@ def get_page_title(soup):
     return soup.title.string if soup.title else None
 
 
-def get_normalized_title(title):
-    """
-    Normalize and lemmatize the given title.
-
-    Parameters:
-    - title (str): The input title to be normalized.
-
-    Returns:
-    - str: The normalized and lemmatized version of the title.
-    """
-
-    # Remove special characters and lowercase the content
-    content = re.sub(r'[^\w\s]', '', title).lower()
-
-    # Normalize German characters to English equivalents
-    content = normalize_german_chars(content)
-
-    with wordnet_lock:
-        # Tokenize the content
-        tokens = word_tokenize(content)
-
-        # Remove stopwords
-        stopwords_set = set(stopwords.words('english'))
-        filtered_tokens = [token for token in tokens if token not in stopwords_set]
-
-        # Lemmatize the content
-        lemmatizer = WordNetLemmatizer()
-
-        lemmatized_content = [lemmatizer.lemmatize(token) for token in filtered_tokens]
-
-        # Convert the lemmatized content back to a string
-        lemmatized_content_str = ' '.join(lemmatized_content)
-
-        return lemmatized_content_str
-
-
 def get_keywords(content, normalized_title, normalized_description):
     """
     Extracts the keywords from the content using the RAKE algorithm.
@@ -601,8 +560,9 @@ def get_keywords(content, normalized_title, normalized_description):
 
     keywords_a = kw_model.extract_keywords(concat, top_n=20)
     keywords = [key[0] for key in keywords_a]
+    keywords = normalize_text(keywords)
 
-    return keywords
+    return set(keywords)
 
 
 def get_description(soup):
@@ -619,43 +579,7 @@ def get_description(soup):
     return description['content'] if description else None
 
 
-def get_normalized_description(description):
-    """
-    Normalize and lemmatize the given description.
-
-    Parameters:
-    - description (str): The input description to be normalized.
-
-    Returns:
-    - str: The normalized and lemmatized version of the description.
-    """
-    # Remove special characters and lowercase the content
-    content = re.sub(r'[^\w\s]', '', description).lower()
-
-    # Normalize German characters to English equivalents
-    content = normalize_german_chars(content)
-
-    # Tokenize the content
-    tokens = word_tokenize(content)
-
-    # Remove stopwords
-    stopwords_set = set(stopwords.words('english'))
-    filtered_tokens = [token for token in tokens if token not in stopwords_set]
-
-    with wordnet_lock:
-        # Lemmatize the content
-        lemmatizer = WordNetLemmatizer()
-
-        lemmatized_content = [lemmatizer.lemmatize(token) for token in filtered_tokens]
-
-        # Convert the lemmatized content back to a string
-        lemmatized_content_str = ' '.join(lemmatized_content)
-
-        return lemmatized_content_str
-
-
 def has_tuebingen_content(url):
-   
     user_agent = 'TuebingenExplorer/1.0'
     try:
         response = requests.get(url)
@@ -666,7 +590,7 @@ def has_tuebingen_content(url):
             if is_allowed[0]:
                 # Use BeautifulSoup to parse the HTML content
                 soup = BeautifulSoup(response.content, 'html.parser')
-                
+
                 # if is_page_language_english(soup, url) and (
                 #     'tuebingen' in str(soup)
                 #     or 'Tuebingen' in str(soup)
@@ -674,17 +598,21 @@ def has_tuebingen_content(url):
                 #     or 'Tübingen' in str(soup)
                 # ):
 
-                if 'tuebingen' in str(soup) or 'Tuebingen' in str(soup) or 'tübingen' in str(soup) or 'Tübingen' in str(soup):   
+                if (
+                    'tuebingen' in str(soup)
+                    or 'Tuebingen' in str(soup)
+                    or 'tübingen' in str(soup)
+                    or 'Tübingen' in str(soup)
+                    or 'tubingen' in str(soup)
+                    or 'Tubingen' in str(soup)
+                ):
                     return True
-                
+
                 else:
-                    
                     return False
             else:
-                
                 return False
         else:
-            
             return False
     except Exception as e:
         print(f"Exception occurred while crawling: {url} | {e}")
@@ -712,7 +640,6 @@ def get_internal_external_links(
     internal_links = []
     external_links = []
     for link in soup.find_all('a'):
-        
         href = link.get('href')
         if (
             href
@@ -722,13 +649,16 @@ def get_internal_external_links(
             and not href.endswith('.jpg')
             and not href.endswith('.webp')
         ):
-            
             # print('---------')
-            #print(domain_internal_links)
+            # print(domain_internal_links)
             if href.startswith('http'):
                 external_link = href
-                #! add "/" if missing 
-                external_link = external_link if external_link.endswith("/") else external_link + "/"
+                #! add "/" if missing
+                external_link = (
+                    external_link
+                    if external_link.endswith("/")
+                    else external_link + "/"
+                )
                 # check if we should push the url to the frontier
                 # check if not in blacklist
                 if base_url not in self.blacklist:
@@ -739,21 +669,27 @@ def get_internal_external_links(
                         if base_url + 'en' in external_link:
                             # check if the page content is english
                             # if is_page_language_english(soup, external_link):
-                                # check if the content has somthing todo with tuebingen
-                                # if has_tuebingen_content(external_link):
-                                    # check if not in sitemap
-                                    if external_link not in domain_internal_links:
-                                        with db_lock:
-                                            # frontier push here
-                                            print(f'add external link to frontier: {external_link}')
-                                            self.db.push_to_frontier(external_link)
+                            # check if the content has somthing todo with tuebingen
+                            # if has_tuebingen_content(external_link):
+                            # check if not in sitemap
+                            if external_link not in domain_internal_links:
+                                with db_lock:
+                                    # frontier push here
+                                    print(
+                                        f'add external link to frontier: {external_link}'
+                                    )
+                                    self.db.push_to_frontier(external_link)
 
                 external_links.append(external_link)
                 #        domain_external_links.append(external_link)
             elif not href.startswith('#') and not '#' in href:
                 internal_link = base_url[:-1] + href
-                #! add "/" if missing 
-                internal_link = internal_link if internal_link.endswith("/") else internal_link + "/"
+                #! add "/" if missing
+                internal_link = (
+                    internal_link
+                    if internal_link.endswith("/")
+                    else internal_link + "/"
+                )
                 # check if we should push the url to the frontier
                 # check if not in blacklist
                 if base_url not in self.blacklist:
@@ -761,21 +697,22 @@ def get_internal_external_links(
                     depth = calculate_url_depth(internal_link)
                     if depth <= self.max_depth_limit and depth >= self.min_depth_limit:
                         # check if not in internal array
-                        #if base_url + 'en' in internal_link:
+                        # if base_url + 'en' in internal_link:
                         # print(f'internal: {internal_link}')
                         # check if the page content is english
                         # if is_page_language_english(soup, internal_link):
-                            # check if the content has somthing todo with tuebingen
-                            # if has_tuebingen_content(internal_link):
+                        # check if the content has somthing todo with tuebingen
+                        # if has_tuebingen_content(internal_link):
 
-                        # check if the internal link is the same url 
+                        # check if the internal link is the same url
                         if internal_link != url:
                             # check if not in sitemap
                             if internal_link not in domain_internal_links:
-                                
                                 with db_lock:
                                     # frontier push here
-                                    print(f'add internal link to frontier: {internal_link}')
+                                    print(
+                                        f'add internal link to frontier: {internal_link}'
+                                    )
                                     self.db.push_to_frontier(internal_link)
                             else:
                                 print(f'already in sitemap {internal_link}')
@@ -886,39 +823,7 @@ def get_page_content(soup):
     # Remove special characters (except "." and "@") and lowercase the content
     content = re.sub(r'[^\w\s.@]', '', content).lower()
 
-    # Normalize German characters to English equivalents
-    content = normalize_german_chars(content)
-
-    #! enable later when we write our own keyword function
-    # # Tokenize the content
-    # tokens = word_tokenize(content)
-
-    # # Remove stopwords
-    # stopwords_set = set(stopwords.words('english'))
-    # filtered_tokens = [token for token in tokens if token not in stopwords_set]
-
-    # # Lemmatize the content
-    # lemmatizer = WordNetLemmatizer()
-    # lemmatized_content = [lemmatizer.lemmatize(
-    #     token) for token in filtered_tokens]
-
-    #! delete this later
-    # Tokenize the content
-    tokens = word_tokenize(content)
-
-    with wordnet_lock:
-        # Lemmatize the content
-        lemmatizer = WordNetLemmatizer()
-
-        lemmatized_content = []
-        for token in tokens:
-            lemma = lemmatizer.lemmatize(token)
-            lemmatized_content.append(lemma)
-
-        # Convert the lemmatized content back to a string
-        lemmatized_content_str = ' '.join(lemmatized_content)
-
-        return lemmatized_content_str
+    return normalize_text(content)
 
 
 def get_image_url(soup, url):
@@ -968,3 +873,49 @@ def get_image_url(soup, url):
             return urljoin(url, '/')[:-1] + favicon_url
 
     return ""
+
+
+def pos_tagger(tag):
+    if tag.startswith('J'):
+        return wordnet.ADJ
+    elif tag.startswith('V'):
+        return wordnet.VERB
+    elif tag.startswith('N'):
+        return wordnet.NOUN
+    elif tag.startswith('R'):
+        return wordnet.ADV
+    else:
+        return None
+
+
+def normalize_text(input):
+    # Remove special characters and lowercase the content
+    content = re.sub(r'[^\w\s]', '', input).lower()
+
+    # Normalize German characters to English equivalents
+    content = normalize_german_chars(content)
+
+    # Tokenize the content
+    tokens = word_tokenize(content)
+
+    # Remove stopwords
+    stopwords_set = set(stopwords.words('english'))
+    filtered_tokens = [token for token in tokens if token not in stopwords_set]
+
+    # Get tags on each word
+    token_pos_tags = nltk.pos_tag(filtered_tokens)
+    wordnet_tag = map(lambda x: (x[0], pos_tagger(x[1])), token_pos_tags)
+    lemmatized_content = []
+
+    with wordnet_lock:
+        # Lemmatize the content
+        lemmatizer = WordNetLemmatizer()
+
+        for word, tag in wordnet_tag:
+            if tag is None:
+                lemmatized_content.append(word)
+            else:
+                lemmatized_content.append(lemmatizer.lemmatize(word, tag))
+
+    # Convert the lemmatized content back to a string
+    return ' '.join(lemmatized_content)
