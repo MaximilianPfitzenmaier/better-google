@@ -12,7 +12,7 @@ from urllib.robotparser import RobotFileParser
 from bs4 import BeautifulSoup
 from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import word_tokenize, sent_tokenize
-from nltk.corpus import stopwords
+from nltk.corpus import stopwords, wordnet
 from rake_nltk import Rake
 from datetime import datetime
 import threading
@@ -86,6 +86,7 @@ class Crawler:
         nltk.download('punkt')
         nltk.download('wordnet')
         nltk.download('stopwords')
+        nltk.download('averaged_perceptron_tagger')
         self.min_depth_limit = 0
         self.max_depth_limit = 2
         self.max_threads = 1
@@ -906,6 +907,19 @@ def get_image_url(soup, url):
     return ""
 
 
+def pos_tagger(tag):
+    if tag.startswith('J'):
+        return wordnet.ADJ
+    elif tag.startswith('V'):
+        return wordnet.VERB
+    elif tag.startswith('N'):
+        return wordnet.NOUN
+    elif tag.startswith('R'):
+        return wordnet.ADV
+    else:
+        return None
+
+
 def normalize_text(input):
     # Remove special characters and lowercase the content
     content = re.sub(r'[^\w\s]', '', input).lower()
@@ -920,13 +934,20 @@ def normalize_text(input):
     stopwords_set = set(stopwords.words('english'))
     filtered_tokens = [token for token in tokens if token not in stopwords_set]
 
+    # Get tags on each word
+    token_pos_tags = nltk.pos_tag(filtered_tokens)
+    wordnet_tag = map(lambda x: (x[0], pos_tagger(x[1])), token_pos_tags)
+    lemmatized_content = []
+
     with wordnet_lock:
         # Lemmatize the content
         lemmatizer = WordNetLemmatizer()
 
-        lemmatized_content = [lemmatizer.lemmatize(token) for token in filtered_tokens]
+        for word, tag in wordnet_tag:
+            if tag is None:
+                lemmatized_content.append(word)
+            else:
+                lemmatized_content.append(lemmatizer.lemmatize(word, tag))
 
-        # Convert the lemmatized content back to a string
-        lemmatized_content_str = ' '.join(lemmatized_content)
-
-        return lemmatized_content_str
+    # Convert the lemmatized content back to a string
+    return ' '.join(lemmatized_content)
