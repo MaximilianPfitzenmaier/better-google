@@ -562,7 +562,7 @@ def get_keywords(content, normalized_title, normalized_description):
     keywords = [key[0] for key in keywords_a]
     keywords = normalize_text(keywords)
 
-    return keywords
+    return set(keywords)
 
 
 def get_description(soup):
@@ -823,39 +823,7 @@ def get_page_content(soup):
     # Remove special characters (except "." and "@") and lowercase the content
     content = re.sub(r'[^\w\s.@]', '', content).lower()
 
-    # Normalize German characters to English equivalents
-    content = normalize_german_chars(content)
-
-    #! enable later when we write our own keyword function
-    # # Tokenize the content
-    # tokens = word_tokenize(content)
-
-    # # Remove stopwords
-    # stopwords_set = set(stopwords.words('english'))
-    # filtered_tokens = [token for token in tokens if token not in stopwords_set]
-
-    # # Lemmatize the content
-    # lemmatizer = WordNetLemmatizer()
-    # lemmatized_content = [lemmatizer.lemmatize(
-    #     token) for token in filtered_tokens]
-
-    #! delete this later
-    # Tokenize the content
-    tokens = word_tokenize(content)
-
-    with wordnet_lock:
-        # Lemmatize the content
-        lemmatizer = WordNetLemmatizer()
-
-        lemmatized_content = []
-        for token in tokens:
-            lemma = lemmatizer.lemmatize(token)
-            lemmatized_content.append(lemma)
-
-        # Convert the lemmatized content back to a string
-        lemmatized_content_str = ' '.join(lemmatized_content)
-
-        return lemmatized_content_str
+    return normalize_text(content)
 
 
 def get_image_url(soup, url):

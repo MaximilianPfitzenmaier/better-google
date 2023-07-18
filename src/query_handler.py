@@ -18,7 +18,9 @@ class Query:
         self.user_query = user_query
 
         # Normalize and lemmatize the query
-        self.prepared_query = src.web_crawler.normalize_text(self.user_query)
+        temp_query = src.web_crawler.normalize_text(self.user_query)
+        self.prepared_query = set(temp_query)
+
         print('Prepared query: ' + self.prepared_query)
 
     def get_index(self) -> None:
