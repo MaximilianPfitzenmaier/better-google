@@ -66,9 +66,18 @@ class Database:
         The list of document ids that match our search.
         """
         sql = """
-            SELECT id, url, title, description, content, img, in_links
-            FROM documents
-            WHERE keywords && %s
+            WITH query_key(key) AS (
+                SELECT unnest(%s)
+                ),
+                doc_key(id, key) AS (
+                    SELECT id, unnest(keywords)
+                    FROM documents
+                )
+            SELECT d.id, d.url, d.title, d.description, d.content, d.img, d.in_links, d.keywords
+            FROM documents AS d
+            WHERE d.id IN (SELECT DISTINCT d1.id
+                           FROM doc_key AS d1, query_key AS q
+                           WHERE d1.key ~* q.key);
         """
         self.cursor.execute(sql, (search_words,))
         # print(self.cursor.statusmessage)

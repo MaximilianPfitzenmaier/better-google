@@ -19,7 +19,7 @@ class Query:
 
         # Normalize and lemmatize the query
         temp_query = src.web_crawler.normalize_text(self.user_query)
-        self.prepared_query = set(temp_query)
+        self.prepared_query = temp_query
 
         print('Prepared query: ' + self.prepared_query)
 
@@ -27,6 +27,7 @@ class Query:
         """
         Creates the index on which we can further select our results later on
         """
+        print(self.prepared_query.split(' '))
         self.index = self.db.fetch_index(self.prepared_query.split(' '))
 
     def link_based_ranking(self):
@@ -107,6 +108,7 @@ class Query:
         document_title = [doc[2] for doc in self.index]
         document_desc = [doc[3] for doc in self.index]
         document_img = [doc[5] for doc in self.index]
+        document_key = [doc[7] for doc in self.index]
 
         # Calculate document scores based on TF-IDF scores
         document_scores = []
@@ -119,19 +121,70 @@ class Query:
             range(len(document_scores)), key=lambda k: document_scores[k], reverse=True
         )
 
-        # Rank documents with their original IDs
-        ranked_documents_with_ids = [
+        # Rank documents
+        final_ranked_documents = [
             (
                 document_ids[i],
                 document_url[i],
                 document_title[i],
                 document_desc[i],
                 document_img[i],
+                document_key[i],
+                document_scores[i]
+            )
+            for i in ranked_documents
+        ]
+
+        return final_ranked_documents
+
+    def rank_likelihood(self):
+        """
+           Rank a collection of documents relative to a query using the query likelihood model
+
+           Returns:
+           ranked documents
+       """
+        qwords = nltk.tokenize.word_tokenize(self.prepared_query)
+
+        document_ids = [doc[0] for doc in self.index]
+        document_url = [doc[1] for doc in self.index]
+        document_title = [doc[2] for doc in self.index]
+        document_desc = [doc[3] for doc in self.index]
+        document_img = [doc[5] for doc in self.index]
+        document_key = [doc[7] for doc in self.index]
+
+        document_scores = []
+
+        for doc in self.index:
+            dwords = nltk.tokenize.word_tokenize(doc[4])
+            ddist = nltk.probability.FreqDist(dwords)
+
+            score = 1.0
+            len_doc = len(dwords)
+            for word in qwords:
+                tdist = ddist[word]
+                score *= tdist / len_doc
+
+            document_scores.append(round(score, 10))
+
+        ranked_documents = sorted(
+            range(len(document_scores)), key=lambda k: document_scores[k], reverse=True
+        )
+
+        final_ranked_documents = [
+            (
+                document_ids[i],
+                document_url[i],
+                document_title[i],
+                document_desc[i],
+                document_img[i],
+                document_key[i],
                 document_scores[i],
             )
             for i in ranked_documents
         ]
-        return ranked_documents_with_ids
+
+        return final_ranked_documents
 
     def get_search_results(self, amount):
         """
@@ -148,6 +201,7 @@ class Query:
         tf_idf_scores = self.calculate_tf_idf()
 
         ranked_documents = self.rank_documents(tf_idf_scores)
+        print(self.rank_likelihood())
 
         # For now, I'll just return the results
         self.search_results = ranked_documents[:amount]
