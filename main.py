@@ -10,7 +10,7 @@ if __name__ == '__main__':
     # db.drop_all_tables()
 
     crawler = src.web_crawler.Crawler(db)
-    crawler.crawl()
+    # crawler.crawl()
     crawler.create_inout_links()
 
     test_query = input("Query: ")

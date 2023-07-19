@@ -38,17 +38,17 @@ class Query:
         None
         """
         max_rank = (
-            len(max(self.index, key=lambda doc: len(doc[5]))[5])
+            len(max(self.index, key=lambda doc: len(doc[6]))[6])
             if len(self.index) > 0
             else 1
         )
         if max_rank == 0:
             max_rank = 1
         self.index = [
-            (doc[0], doc[1], doc[2], doc[3], doc[4], len(doc[5]) / max_rank)
+            (doc[0], doc[1], doc[2], doc[3], doc[4], doc[5], len(doc[6]) / max_rank, doc[7])
             for doc in self.index
         ]
-        self.index.sort(key=lambda doc: doc[5], reverse=True)
+        self.index.sort(key=lambda doc: doc[6], reverse=True)
 
     def calculate_tf_idf(self):
         """
@@ -185,6 +185,69 @@ class Query:
         ]
 
         return final_ranked_documents
+    
+    def measure_relevance(self, ranking):
+        relevance = 0.0
+
+        for doc in ranking:
+            relevance += doc[6]
+
+        return relevance/len(ranking)
+    
+    def measure_diversity(self, ranking, initial_approach = True):
+        diversity = 0.0
+        terms = []
+        
+        for doc in ranking:
+            doc_div = 0
+            words = doc[4].split(' ')
+            for word in words:
+                if word not in terms:
+                    terms.append(word)
+                    if initial_approach:
+                        doc_div += 1
+                    else:
+                        diversity += 1
+            if initial_approach:
+                diversity += doc_div / len(words)
+
+        return diversity/len(ranking)
+    
+    def diversify(self, ranking, k, l):
+        reranked = []
+        initial_approach = False
+        relevance_total = self.measure_relevance(ranking)
+        diversity_total = self.measure_diversity(ranking)
+
+        # To start, add the single most relevant document to our ranking
+        reranked.append(ranking.pop(0))
+
+        while len(reranked) < k and len(ranking) != 0:
+            # greedily add the single document that maximizes the weighted mix of l * relevance + (1-l) diversity
+            best_doc = (-1, -99999)  
+            for doc in ranking:
+                if initial_approach:
+                    # to get the values for relevance and diversity I measure the existing reranked list together with the new doc as if it were added to the list already and check its relevancy
+                    temp = reranked.copy()
+                    temp.append(doc)
+                    relevance = self.measure_relevance(temp)
+                    diversity = self.measure_diversity(temp)
+                else:
+                    # by comparing the scores with and without the document added to the entire initial list, we can measure the diversity of this doc more precisely
+                    # I combine this with a naive approach in the diversity measurement where I don't average out the new words per doc
+                    # I believe that this will give me a better approximation of how diverse this doc was. In the other approach, averaging over the doc length seems fitting 
+                    # since we only have a few docs in the reranked list, so a new long doc will generally be given an advantage which isn't as much about diversity as it is about length
+                    temp = reranked.copy().__add__(ranking)
+                    temp.remove(doc)
+                    relevance = relevance_total - self.measure_relevance(temp)
+                    diversity = diversity_total - self.measure_diversity(temp, initial_approach)
+                score = l * relevance + (1 - l) * diversity
+                if score > best_doc[1]:
+                    best_doc = (doc, score)
+            reranked.append(best_doc[0])
+            ranking.remove(best_doc[0])
+
+        return reranked
 
     def get_search_results(self, amount):
         """
@@ -195,13 +258,33 @@ class Query:
         """
         self.get_index()
 
+        if len(self.index) == 0:
+            self.search_results = []
+            return
+
         # At this point we should apply some relevancy metrics and sort the results by importance
-        # self.link_based_ranking()
+        self.link_based_ranking()
+        for doc in self.index:
+            print('ID: ' + str(doc[0]) + '; Url: ' + doc[1] + '; Title: ' + doc[2] + '; Link-score: ' + str(doc[6]))
 
         tf_idf_scores = self.calculate_tf_idf()
-
         ranked_documents = self.rank_documents(tf_idf_scores)
-        print(self.rank_likelihood())
+        for doc in ranked_documents:
+            print('ID: ' + str(doc[0]) + '; Url: ' + doc[1] + '; Title: ' + doc[2] + '; tfidf-score: ' + str(doc[6]))
+
+        likelihood_results = self.rank_likelihood()
+        for doc in likelihood_results:
+            print('ID: ' + str(doc[0]) + '; Url: ' + doc[1] + '; Title: ' + doc[2] + '; query-likelihood-score: ' + str(doc[6]))
+        
+        # combine and add the relevance scores
+        self.index = [(doc[0], doc[1], doc[2], doc[3], doc[4], doc[5], 
+                       (doc[6] + 
+                        [temp[6] for temp in ranked_documents if temp[0] == doc[0]][0] +
+                        [temp[6] for temp in likelihood_results if temp[0] == doc[0]][0]) / 3, 
+                       doc[7]) for doc in self.index]
+        
+        # figure out the ranking by adding diversity
+        self.index = self.diversify(self.index, amount, 0.2)
 
         # For now, I'll just return the results
-        self.search_results = ranked_documents[:amount]
+        self.search_results = self.index[:amount]
