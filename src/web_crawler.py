@@ -41,12 +41,12 @@ class Crawler:
         # 'https://en.stuttgart.de/',
         # 'https://en.wikipedia.org/wiki/Stuttgart',
         # 'https://www.stuttgart-tourist.de/en',
+        # 'https://www.tuebingen.de/',
+        'https://civis.eu/en/about-civis/universities/eberhard-karls-universitat-tubingen',
         #'https://hoelderlinturm.de/english/',
-        'https://www.tuebingen.de/',
         #'https://www.my-stuwe.de/en/',
         # # # reichen solche datenbanken?
         # 'https://uni-tuebingen.de/en/',
-        # 'https://civis.eu/en/about-civis/universities/eberhard-karls-universitat-tubingen',
         # 'https://tuebingenresearchcampus.com/en/',
         # # 'https://is.mpg.de/en/',
         # # # noch mehr guides, decken aber gut ab - zumal eh die einzelnen seiten idr nur auf deutsch sind
@@ -76,6 +76,7 @@ class Crawler:
     blacklist = [
         'https://www.tripadvisor.com/',
         'https://www.yelp.com/',
+        'https://airtable.com/',
     ]
 
     db = None
@@ -191,7 +192,7 @@ class Crawler:
                     # only crawl the page content, if the content is english
                     # if is_page_language_english(soup, url):
                     # get the sitemap for the host from the sitemap table
-                    domain_internal_links = get_sitemap_from_host(self, full_host)
+                    sitemap = get_sitemap_from_host(self, full_host)
                     domain_external_links = []
 
                     try:
@@ -200,7 +201,7 @@ class Crawler:
 
                         links = get_internal_external_links(
                             soup,
-                            domain_internal_links,
+                            sitemap,
                             domain_external_links,
                             full_host,
                             url,
@@ -209,12 +210,15 @@ class Crawler:
 
                         internal_links = links[0]
                         external_links = links[1]
-                        domain_internal_links = links[2]
+                        sitemap = links[2]
                         domain_external_links = links[3]
                     except Exception as e:
                         print(f"Exception occurred while intern extern : {url} | {e}")
 
-                    set_sitemap_to_host(self, full_host, domain_internal_links)
+                    
+                    set_sitemap_to_host(self, full_host, sitemap)
+
+                    add_external_link_to_sitemap( self, domain_external_links )
 
                     print(f"url: {url}")
                     if not has_tuebingen_content(url):
@@ -333,6 +337,8 @@ class Crawler:
         self.db.create_inoutlinks()
 
 
+
+
 def get_sitemap_from_host(self, domain):
     """
     Gets the sitemap from the given domain.
@@ -350,8 +356,7 @@ def get_sitemap_from_host(self, domain):
         except Exception as e:
             print(f"Exception occurred while getting sitemap: {domain} | {e}")
             return []
-
-
+       
 def set_sitemap_to_host(self, domain, array_to_set):
     """
     Gets the sitemap from the given domain.
@@ -371,6 +376,39 @@ def set_sitemap_to_host(self, domain, array_to_set):
         except Exception as e:
             print(f"Exception occurred while setting sitemap: {domain} | {e}")
 
+def add_external_link_to_sitemap(self, domain_external_links ):
+    # add the external links to the sitemap
+    for external in domain_external_links:
+        
+        # get domain
+        domain = urljoin(external, '/')        
+        domain = make_pretty_url(domain)
+
+        #prepare link
+        external = make_pretty_url(external)
+
+        # call database functions
+        # get sitemap
+        sitemap = get_sitemap_from_host(self, domain)
+
+        #print(f'DOMAIN: {domain}')
+        #print(f'EXTERNAL: {external}')
+
+        # add this link to the sitemap
+        if external not in sitemap:
+            sitemap.append(external)
+            # write back sitemap
+            set_sitemap_to_host(self, domain, sitemap)
+
+def make_pretty_url(link):
+    #prepare link
+    if not link.endswith(".html") and not link.endswith(".aspx") and not link.endswith('.pdf'):
+        link = (
+            link
+            if link.endswith("/")
+            else link + "/"
+        )
+    return link
 
 def normalize_german_chars(text):
     """
@@ -394,7 +432,6 @@ def normalize_german_chars(text):
         text = text.replace(char, replacement)
 
     return text
-
 
 def is_page_language_english(soup, url):
     """
@@ -434,7 +471,6 @@ def is_page_language_english(soup, url):
         return True
     else:
         return False
-
 
 # Crawler Functions
 def create_web_page_object(
@@ -635,8 +671,7 @@ def get_internal_external_links(
         - list: The external links (URLs outside the current domain).
     """
 
-    if not url.endswith('.html'):
-        url = url if url.endswith("/") else url + "/"
+    url = make_pretty_url(url)
     
     # get the base url
     base_url = host
@@ -650,19 +685,21 @@ def get_internal_external_links(
             and not href.startswith('tel:')
             and not href.startswith('javascript:')
             and not href.endswith('.jpg')
+            and not href.endswith('.png')
+            and not href.endswith('.gif')
             and not href.endswith('.webp')
+            and not href.endswith('.pdf')
+            and not href.endswith('.xml')
+            and not '@' in href
         ):
-            # print('---------')
-            # print(domain_internal_links)
+            
             if href.startswith('http'):
                 external_link = href
+
+                external_link = external_link if external_link.startswith('https') else external_link.replace("http://", "https://")
+
                 #! add "/" if missing
-                if not external_link.endswith(".html") or not external_link.endswith(".aspx"):
-                    external_link = (
-                        external_link
-                        if external_link.endswith("/")
-                        else external_link + "/"
-                    )
+                external_link = make_pretty_url(external_link)
                 # check if we should push the url to the frontier
                 # check if not in blacklist
                 if base_url not in self.blacklist:
@@ -670,31 +707,41 @@ def get_internal_external_links(
                     depth = calculate_url_depth(external_link)
                     if depth <= self.max_depth_limit and depth >= self.min_depth_limit:
                         # check if not in internal array
-                        if base_url + 'en' in external_link:
-                            # check if the page content is english
-                            # if is_page_language_english(soup, external_link):
-                            # check if the content has somthing todo with tuebingen
-                            # if has_tuebingen_content(external_link):
+                        if external_link != url:
+                            
                             # check if not in sitemap
-                            if external_link not in domain_internal_links:
-                                with db_lock:
-                                    # frontier push here
-                                    print(
-                                        f'add external link to frontier: {external_link}'
-                                    )
-                                    self.db.push_to_frontier(external_link)
+                            domain = urljoin(external_link, '/')
+                            domain = make_pretty_url(domain)
+                            sitemap_from_this_host = get_sitemap_from_host(self, domain)
+                            if external_link not in sitemap_from_this_host:
+                                
+                                if external_link not in external_links:
+                                    with db_lock:
+                                        # frontier push here
+                                        print(
+                                            f'add external link to frontier: {external_link}'
+                                        )
+                                        self.db.push_to_frontier(external_link)
+                            else:
+                                print(f'already in sitemap {external_link}')
+                        else:
+                            print(f'me myself and I {external_link}')
+                    else:
+                        print(f'max depth {external_link}')
+                else:
+                    print(f'blacklisted {external_link}')
 
+                # add all internal links to web_page_property
                 external_links.append(external_link)
-                #        domain_external_links.append(external_link)
+                
+                # Add the URL to the domain sitemap
+                domain_external_links.append(external_link)
+            
+            
             elif not href.startswith('#') and not '#' in href:
                 internal_link = base_url[:-1] + href
                 #! add "/" if missing
-                if not internal_link.endswith(".html") and not internal_link.endswith(".aspx"):
-                    internal_link = (
-                        internal_link
-                        if internal_link.endswith("/")
-                        else internal_link + "/"
-                    )
+                internal_link = make_pretty_url(internal_link)
 
                 # check if we should push the url to the frontier
                 # check if not in blacklist
@@ -702,14 +749,6 @@ def get_internal_external_links(
                     # check if depth is fine
                     depth = calculate_url_depth(internal_link)
                     if depth <= self.max_depth_limit and depth >= self.min_depth_limit:
-                        # check if not in internal array
-                        # if base_url + 'en' in internal_link:
-                        # print(f'internal: {internal_link}')
-                        # check if the page content is english
-                        # if is_page_language_english(soup, internal_link):
-                        # check if the content has somthing todo with tuebingen
-                        # if has_tuebingen_content(internal_link):
-
                         # check if the internal link is the same url
                         if internal_link != url:
                             # check if not in sitemap
