@@ -92,6 +92,11 @@ class Query:
             for word, tf in tf_score.items():
                 tf_idf_score[word] = tf * idf_scores[word]
             tf_idf_scores.append(tf_idf_score)
+        
+        numeric_scores = [x[1] for x in tf_idf_scores]
+        max_value = max(numeric_scores)
+        for entry in tf_idf_scores:
+            entry /= max_value
 
         return tf_idf_scores
 
@@ -166,6 +171,9 @@ class Query:
                 score *= tdist / len_doc
 
             document_scores.append(round(score, 10))
+        
+        max_value = max(document_scores)
+        document_scores = [x / max_value for x in document_scores]
 
         ranked_documents = sorted(
             range(len(document_scores)), key=lambda k: document_scores[k], reverse=True
