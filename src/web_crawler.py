@@ -559,10 +559,9 @@ def get_keywords(content, normalized_title, normalized_description):
         concat += normalized_description
 
     keywords_a = kw_model.extract_keywords(concat, top_n=20)
-    keywords = [key[0] for key in keywords_a]
-    keywords = normalize_text(keywords)
+    keywords = [normalize_text(key[0]) for key in keywords_a]
 
-    return set(keywords)
+    return keywords
 
 
 def get_description(soup):
