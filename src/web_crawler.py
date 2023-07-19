@@ -16,6 +16,7 @@ from nltk.corpus import stopwords, wordnet
 from rake_nltk import Rake
 from datetime import datetime
 import threading
+from translate import Translator
 
 
 # Create a thread-local instance of WordNet and a lock
@@ -38,13 +39,10 @@ class CrawlThread(threading.Thread):
 
 class Crawler:
     initial_frontier = [
-        # 'https://en.stuttgart.de/',
-        # 'https://en.wikipedia.org/wiki/Stuttgart',
-        # 'https://www.stuttgart-tourist.de/en',
-        # 'https://www.tuebingen.de/',
-        'https://civis.eu/en/about-civis/universities/eberhard-karls-universitat-tubingen',
-        #'https://hoelderlinturm.de/english/',
-        #'https://www.my-stuwe.de/en/',
+        'https://www.tuebingen.de/',
+        # 'https://civis.eu/en/about-civis/universities/eberhard-karls-universitat-tubingen',
+        # 'https://hoelderlinturm.de/english/',
+        # 'https://www.my-stuwe.de/en/',
         # # # reichen solche datenbanken?
         # 'https://uni-tuebingen.de/en/',
         # 'https://tuebingenresearchcampus.com/en/',
@@ -84,10 +82,10 @@ class Crawler:
     def __init__(self, db) -> None:
         self.db = db
         self.user_agent = 'TuebingenExplorer/1.0'
-        # nltk.download('punkt')
-        # nltk.download('wordnet')
-        # nltk.download('stopwords')
-        # nltk.download('averaged_perceptron_tagger')
+        nltk.download('punkt')
+        nltk.download('wordnet')
+        nltk.download('stopwords')
+        nltk.download('averaged_perceptron_tagger')
         self.min_depth_limit = 0
         self.max_depth_limit = 2
         self.max_threads = 1
@@ -172,7 +170,7 @@ class Crawler:
             )
 
             if full_host.endswith('.html/'):
-                full_host = full_host[:-1] 
+                full_host = full_host[:-1]
 
             # Check if the request is successful (status code 200)
             if response.status_code == 200:
@@ -189,8 +187,6 @@ class Crawler:
                     # Use BeautifulSoup to parse the HTML content
                     soup = BeautifulSoup(response.content, 'html.parser')
 
-                    # only crawl the page content, if the content is english
-                    # if is_page_language_english(soup, url):
                     # get the sitemap for the host from the sitemap table
                     sitemap = get_sitemap_from_host(self, full_host)
                     domain_external_links = []
@@ -213,14 +209,13 @@ class Crawler:
                         sitemap = links[2]
                         domain_external_links = links[3]
                     except Exception as e:
-                        print(f"Exception occurred while intern extern : {url} | {e}")
+                        print(
+                            f"Exception occurred while intern extern : {url} | {e}")
 
-                    
                     set_sitemap_to_host(self, full_host, sitemap)
 
-                    add_external_link_to_sitemap( self, domain_external_links )
+                    add_external_link_to_sitemap(self, domain_external_links)
 
-                    print(f"url: {url}")
                     if not has_tuebingen_content(url):
                         print("Not a Tübingen page: exiting")
                         return  # Exit the function
@@ -246,7 +241,8 @@ class Crawler:
                             content, normalized_title, normalized_description
                         )
                     except Exception as e:
-                        print(f"Exception occurred while keywords: {url} | {e}")
+                        print(
+                            f"Exception occurred while keywords: {url} | {e}")
 
                     in_links = []
 
@@ -302,7 +298,8 @@ class Crawler:
                 else:
                     print(f"Error crawling: {url} | Allowed: {allowed} ")
             else:
-                print(f"Error crawling: {url} | Status: {response.status_code}")
+                print(
+                    f"Error crawling: {url} | Status: {response.status_code}")
         else:
             print(f"Domain blacklisted: {urljoin(url, '/')}")
 
@@ -337,8 +334,6 @@ class Crawler:
         self.db.create_inoutlinks()
 
 
-
-
 def get_sitemap_from_host(self, domain):
     """
     Gets the sitemap from the given domain.
@@ -356,7 +351,8 @@ def get_sitemap_from_host(self, domain):
         except Exception as e:
             print(f"Exception occurred while getting sitemap: {domain} | {e}")
             return []
-       
+
+
 def set_sitemap_to_host(self, domain, array_to_set):
     """
     Gets the sitemap from the given domain.
@@ -376,23 +372,24 @@ def set_sitemap_to_host(self, domain, array_to_set):
         except Exception as e:
             print(f"Exception occurred while setting sitemap: {domain} | {e}")
 
-def add_external_link_to_sitemap(self, domain_external_links ):
+
+def add_external_link_to_sitemap(self, domain_external_links):
     # add the external links to the sitemap
     for external in domain_external_links:
-        
+
         # get domain
-        domain = urljoin(external, '/')        
+        domain = urljoin(external, '/')
         domain = make_pretty_url(domain)
 
-        #prepare link
+        # prepare link
         external = make_pretty_url(external)
 
         # call database functions
         # get sitemap
         sitemap = get_sitemap_from_host(self, domain)
 
-        #print(f'DOMAIN: {domain}')
-        #print(f'EXTERNAL: {external}')
+        # print(f'DOMAIN: {domain}')
+        # print(f'EXTERNAL: {external}')
 
         # add this link to the sitemap
         if external not in sitemap:
@@ -400,8 +397,9 @@ def add_external_link_to_sitemap(self, domain_external_links ):
             # write back sitemap
             set_sitemap_to_host(self, domain, sitemap)
 
+
 def make_pretty_url(link):
-    #prepare link
+    # prepare link
     if not link.endswith(".html") and not link.endswith(".aspx") and not link.endswith('.pdf'):
         link = (
             link
@@ -409,6 +407,7 @@ def make_pretty_url(link):
             else link + "/"
         )
     return link
+
 
 def normalize_german_chars(text):
     """
@@ -433,46 +432,29 @@ def normalize_german_chars(text):
 
     return text
 
-def is_page_language_english(soup, url):
+
+def is_text_english(text):
     """
-    Checks if the language of a web page is English based on the lang attribute of the HTML tag.
+    Checks if the language of a text is English.
 
     Parameters:
-    - soup (BeautifulSoup): The BeautifulSoup object representing the parsed HTML content.
+    - text (string): The Text to check.
 
     Returns:
-    - bool: True if the language is English, False otherwise.
+    - bool: True if the language is German, False otherwise.
     """
-    # Convert the BeautifulSoup object to a string
-    soup_str = str(soup)
+    text = str(text)
 
-    # Parse the HTML string using BeautifulSoup again
-    inner_soup = BeautifulSoup(soup_str, 'html.parser')
-
-    # Get the HTML tag
-    html_tag = inner_soup.html
-
-    # Match "/en/" or "=en" in the URL
-    pattern = r"(/en/|=en)"
-
-    # Search for the pattern in the URL
-    match = re.search(pattern, url)
-
-    # Check if the lang attribute is set to 'en'
-    if (
-        html_tag
-        and html_tag.has_attr('lang')
-        and (html_tag['lang'].startswith('en') or html_tag['lang'].startswith('us'))
-    ):
-        return True
-    elif match:
-        return True
-    elif detect(soup.getText()).startswith('en'):
-        return True
-    else:
+    try:
+        language_code = detect(text)
+        return language_code == 'de'
+    except:
         return False
 
+
 # Crawler Functions
+
+
 def create_web_page_object(
     id,
     url,
@@ -572,7 +554,12 @@ def get_page_title(soup):
     Returns:
     - str or None: The title of the web page if found, otherwise None.
     """
-    return soup.title.string if soup.title else None
+    title = soup.title.string if soup.title else None
+
+    if title != None and is_text_english(title):
+        return translate_german_to_english(title)
+    else:
+        return soup.title.string if soup.title else None
 
 
 def get_keywords(content, normalized_title, normalized_description):
@@ -602,6 +589,13 @@ def get_keywords(content, normalized_title, normalized_description):
     return keywords
 
 
+def translate_german_to_english(text):
+    text = str(text)
+    translator = Translator(from_lang='de', to_lang='en')
+    translation = translator.translate(text)
+    return translation
+
+
 def get_description(soup):
     """
     Extracts the description from the description meta tag of a web page from the given BeautifulSoup object.
@@ -613,7 +607,10 @@ def get_description(soup):
     - str or None: The description from the meta tag if found, otherwise None.
     """
     description = soup.find('meta', attrs={'name': 'description'})
-    return description['content'] if description else None
+    if description and is_text_english(description):
+        return translate_german_to_english(description['content'])
+    else:
+        return description['content'] if description else None
 
 
 def has_tuebingen_content(url):
@@ -627,13 +624,6 @@ def has_tuebingen_content(url):
             if is_allowed[0]:
                 # Use BeautifulSoup to parse the HTML content
                 soup = BeautifulSoup(response.content, 'html.parser')
-
-                # if is_page_language_english(soup, url) and (
-                #     'tuebingen' in str(soup)
-                #     or 'Tuebingen' in str(soup)
-                #     or 'tübingen' in str(soup)
-                #     or 'Tübingen' in str(soup)
-                # ):
 
                 if (
                     'tuebingen' in str(soup)
@@ -672,7 +662,7 @@ def get_internal_external_links(
     """
 
     url = make_pretty_url(url)
-    
+
     # get the base url
     base_url = host
     internal_links = []
@@ -692,11 +682,12 @@ def get_internal_external_links(
             and not href.endswith('.xml')
             and not '@' in href
         ):
-            
+
             if href.startswith('http'):
                 external_link = href
 
-                external_link = external_link if external_link.startswith('https') else external_link.replace("http://", "https://")
+                external_link = external_link if external_link.startswith(
+                    'https') else external_link.replace("http://", "https://")
 
                 #! add "/" if missing
                 external_link = make_pretty_url(external_link)
@@ -708,13 +699,14 @@ def get_internal_external_links(
                     if depth <= self.max_depth_limit and depth >= self.min_depth_limit:
                         # check if not in internal array
                         if external_link != url:
-                            
+
                             # check if not in sitemap
                             domain = urljoin(external_link, '/')
                             domain = make_pretty_url(domain)
-                            sitemap_from_this_host = get_sitemap_from_host(self, domain)
+                            sitemap_from_this_host = get_sitemap_from_host(
+                                self, domain)
                             if external_link not in sitemap_from_this_host:
-                                
+
                                 if external_link not in external_links:
                                     with db_lock:
                                         # frontier push here
@@ -733,11 +725,10 @@ def get_internal_external_links(
 
                 # add all internal links to web_page_property
                 external_links.append(external_link)
-                
+
                 # Add the URL to the domain sitemap
                 domain_external_links.append(external_link)
-            
-            
+
             elif not href.startswith('#') and not '#' in href:
                 internal_link = base_url[:-1] + href
                 #! add "/" if missing
@@ -867,6 +858,9 @@ def get_page_content(soup):
 
     # Remove special characters (except "." and "@") and lowercase the content
     content = re.sub(r'[^\w\s.@]', '', content).lower()
+
+    if is_text_english(content):
+        content = translate_german_to_english(content)
 
     return normalize_text(content)
 
