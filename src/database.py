@@ -32,16 +32,16 @@ class Database:
         Connect to the PostgreSQL database server
         """
 
-        with open('src/database.txt', 'r') as f:
-            db = f.read().splitlines()
+        # with open('src/database.txt', 'r') as f:
+        #     db = f.read().splitlines()
 
         self.connection = psycopg2.connect(
-            host=db[0],
-            database=db[1],
-            user=db[2],
-            password=db[3],
+            host="localhost",
+            database="postgres",
+            user="postgres",
+            password="root",
         )
-        f.close()
+        # f.close()
         self.cursor = self.connection.cursor()
 
     def query(self, query):

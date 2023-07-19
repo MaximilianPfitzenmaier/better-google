@@ -688,8 +688,6 @@ def get_internal_external_links(
                 #        domain_external_links.append(external_link)
             elif not href.startswith('#') and not '#' in href:
                 internal_link = base_url[:-1] + href
-                print(f'BEFORE: {internal_link}')
-                print(internal_link.endswith(".html"))
                 #! add "/" if missing
                 if not internal_link.endswith(".html") and not internal_link.endswith(".aspx"):
                     internal_link = (
@@ -698,7 +696,6 @@ def get_internal_external_links(
                         else internal_link + "/"
                     )
 
-                print(f'AFTER: {internal_link}')
                 # check if we should push the url to the frontier
                 # check if not in blacklist
                 if base_url not in self.blacklist:
