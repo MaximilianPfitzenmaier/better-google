@@ -342,7 +342,7 @@ class Database:
                 in_links         INT[],
                 out_links        TEXT[],
                 content          TEXT,
-                img              BYTEA
+                img              TEXT
             )
         """
         self.cursor.execute(sql)

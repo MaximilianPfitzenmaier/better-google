@@ -41,9 +41,9 @@ class Crawler:
         # 'https://en.stuttgart.de/',
         # 'https://en.wikipedia.org/wiki/Stuttgart',
         # 'https://www.stuttgart-tourist.de/en',
-        'https://hoelderlinturm.de/english/',
-        # 'https://www.tuebingen.de/en/',
-        # 'https://www.my-stuwe.de/en/',
+        #'https://hoelderlinturm.de/english/',
+        'https://www.tuebingen.de/',
+        #'https://www.my-stuwe.de/en/',
         # # # reichen solche datenbanken?
         # 'https://uni-tuebingen.de/en/',
         # 'https://civis.eu/en/about-civis/universities/eberhard-karls-universitat-tubingen',
@@ -83,10 +83,10 @@ class Crawler:
     def __init__(self, db) -> None:
         self.db = db
         self.user_agent = 'TuebingenExplorer/1.0'
-        nltk.download('punkt')
-        nltk.download('wordnet')
-        nltk.download('stopwords')
-        nltk.download('averaged_perceptron_tagger')
+        # nltk.download('punkt')
+        # nltk.download('wordnet')
+        # nltk.download('stopwords')
+        # nltk.download('averaged_perceptron_tagger')
         self.min_depth_limit = 0
         self.max_depth_limit = 2
         self.max_threads = 1
@@ -170,6 +170,9 @@ class Crawler:
                 else f"{parsed_url.scheme}://{host}/"
             )
 
+            if full_host.endswith('.html/'):
+                full_host = full_host[:-1] 
+
             # Check if the request is successful (status code 200)
             if response.status_code == 200:
                 # Check if crawling is allowed and if a delay is set
@@ -245,7 +248,7 @@ class Crawler:
 
                     out_links = []
 
-                    img = get_image_url(soup, url)
+                    img = str(get_image_url(soup, url))
 
                     # Create the web page object
                     web_page = create_web_page_object(
@@ -296,7 +299,6 @@ class Crawler:
                     print(f"Error crawling: {url} | Allowed: {allowed} ")
             else:
                 print(f"Error crawling: {url} | Status: {response.status_code}")
-
         else:
             print(f"Domain blacklisted: {urljoin(url, '/')}")
 
@@ -633,7 +635,9 @@ def get_internal_external_links(
         - list: The external links (URLs outside the current domain).
     """
 
-    url = url if url.endswith("/") else url + "/"
+    if not url.endswith('.html'):
+        url = url if url.endswith("/") else url + "/"
+    
     # get the base url
     base_url = host
     internal_links = []
@@ -653,11 +657,12 @@ def get_internal_external_links(
             if href.startswith('http'):
                 external_link = href
                 #! add "/" if missing
-                external_link = (
-                    external_link
-                    if external_link.endswith("/")
-                    else external_link + "/"
-                )
+                if not external_link.endswith(".html") or not external_link.endswith(".aspx"):
+                    external_link = (
+                        external_link
+                        if external_link.endswith("/")
+                        else external_link + "/"
+                    )
                 # check if we should push the url to the frontier
                 # check if not in blacklist
                 if base_url not in self.blacklist:
@@ -683,12 +688,17 @@ def get_internal_external_links(
                 #        domain_external_links.append(external_link)
             elif not href.startswith('#') and not '#' in href:
                 internal_link = base_url[:-1] + href
+                print(f'BEFORE: {internal_link}')
+                print(internal_link.endswith(".html"))
                 #! add "/" if missing
-                internal_link = (
-                    internal_link
-                    if internal_link.endswith("/")
-                    else internal_link + "/"
-                )
+                if not internal_link.endswith(".html") and not internal_link.endswith(".aspx"):
+                    internal_link = (
+                        internal_link
+                        if internal_link.endswith("/")
+                        else internal_link + "/"
+                    )
+
+                print(f'AFTER: {internal_link}')
                 # check if we should push the url to the frontier
                 # check if not in blacklist
                 if base_url not in self.blacklist:
