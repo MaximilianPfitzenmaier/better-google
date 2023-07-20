@@ -73,7 +73,7 @@ class Database:
                     SELECT id, unnest(keywords)
                     FROM documents
                 )
-            SELECT d.id, d.url, d.title, d.description, d.content, d.img, d.in_links, d.keywords
+            SELECT d.id, d.url, d.title, d.description, d.content, d.img, d.in_links, d.keywords, d.normalized_content
             FROM documents AS d
             WHERE d.id IN (SELECT DISTINCT d1.id
                            FROM doc_key AS d1, query_key AS q
@@ -93,7 +93,7 @@ class Database:
         Returns:
         The new entry or None if an error was encountered.
         """
-        sql = "INSERT INTO documents VALUES (default,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING *"
+        sql = "INSERT INTO documents VALUES (default,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING *"
         try:
             self.cursor.execute(
                 sql,
@@ -104,14 +104,14 @@ class Database:
                     element.get("keywords", None),
                     element.get("description", None),
                     element.get("normalized_description", None)
-                    if element.get("normalized_description", None)
-                    else [],
+                    if element.get("normalized_description", None) else [],
                     element.get("internal_links", []),
                     element.get("external_links", []),
                     element.get("in_links", None),
                     element.get("out_links", None),
                     element.get("content", None),
-                    element.get("img", None),
+                    element.get("img", []),
+                    element.get("normalized_content", None),
                 ),
             )
             # print(self.cursor.statusmessage)
@@ -341,19 +341,20 @@ class Database:
         """
         sql = """
             CREATE TABLE IF NOT EXISTS documents (
-                id               SERIAL PRIMARY KEY,
-                url              TEXT NOT NULL UNIQUE,
-                title            TEXT,
-                norm_title       TEXT,
-                keywords         TEXT[],
-                description      TEXT,
-                norm_description TEXT,
-                internal_links   TEXT[],
-                external_links   TEXT[],
-                in_links         INT[],
-                out_links        TEXT[],
-                content          TEXT,
-                img              TEXT
+                id                 SERIAL PRIMARY KEY,
+                url                TEXT NOT NULL UNIQUE,
+                title              TEXT,
+                norm_title         TEXT,
+                keywords           TEXT[],
+                description        TEXT,
+                norm_description   TEXT,
+                internal_links     TEXT[],
+                external_links     TEXT[],
+                in_links           INT[],
+                out_links          TEXT[],
+                normalized_content TEXT,
+                img                TEXT[],
+                content            TEXT
             )
         """
         self.cursor.execute(sql)

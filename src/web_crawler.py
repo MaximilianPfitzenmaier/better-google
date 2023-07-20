@@ -16,7 +16,10 @@ from nltk.corpus import stopwords, wordnet
 from rake_nltk import Rake
 from datetime import datetime
 import threading
-from translate import Translator
+# from translate import Translator
+
+from googletrans import Translator
+# import goslate
 
 # Create a thread-local instance of WordNet and a lock
 wordnet_lock = threading.Lock()
@@ -38,67 +41,289 @@ class CrawlThread(threading.Thread):
 
 class Crawler:
     initial_frontier = [
+        # attractions
+        "https://justinpluslauren.com/things-to-do-in-tubingen-germany/",
+        "https://velvetescape.com/things-to-do-in-tubingen/",
+        "https://www.tuebingen-info.de/de/tuebinger-flair/sehenswuerdigkeiten/",
+        "https://globaltravelescapades.com/things-to-do-in-tubingen-germany/",
+        "https://thespicyjourney.com/magical-things-to-do-in-tubingen-in-one-day-tuebingen-germany-travel-guide/",
+        "https://theculturetrip.com/europe/germany/articles/the-best-things-to-see-and-do-in-tubingen-germany/",
+        "https://bestplacesnthings.com/places-to-visit-tubingen-baden-wurttemberg-germany/",
+        "https://www.komoot.com/guide/210692/attractions-around-tuebingen/",
+        "https://www.mygermanyvacation.com/best-things-to-do-and-see-in-tubingen-germany/",
+        "https://www.tuebingen.de/en/3327.html",
+        "https://www.krone-tuebingen.de/en/a-holiday-in-tuebingen/tuebingen-the-surrounding-area/",
+        "https://www.tuebingen-info.de/de/sehenswuerdigkeiten/",
+        "https://www.trip.com/travel-guide/tubingen-44519/tourist-attractions/",
+        "https://www.minube.net/what-to-see/germany/baden-wurttemberg/tubingen/",
+        "https://www.triphobo.com/places/t-bingen-germany/things-to-do/",
+        "https://www.expedia.com/Things-To-Do-In-Tuebingen.d181220.Travel-Guide-Activities/",
+        "https://www.travelocity.com/Things-To-Do-In-Tuebingen.d181220.Travel-Guide-Activities/",
+        "https://www.viamichelin.com/web/Tourist-Attractions/Tourist-Attractions-Tubingen-72070-Baden_Wurttemberg-Germany/",
+        "https://simplifylivelove.com/tubingen-germany/",
+        "https://www.expedia.co.uk/Things-To-Do-In-Tuebingen.d181220.Travel-Guide-Activities/",
+        "https://www.europeanbestdestinations.com/destinations/tubingen/",
+        "https://en.wikipedia.org/wiki/Category:Tourist_attractions_in_T%C3%BCbingen/",
+        "https://www.atlasobscura.com/things-to-do/tubingen-germany/",
+        "https://www.destimap.com/index.php?act=place&p=Tubingen%2C-Germany/",
+        "https://www.booking.com/attractions/city/de/tubingen.de.html",
+        "https://www.outdooractive.com/en/places-to-see/tuebingen/landscape-in-tuebingen/21876965/",
+        "https://www.wotif.com/Things-To-Do-In-Tuebingen.d181220.Travel-Guide-Activities/",
+        "https://www.getyourguide.de/reiseziele/tubingen-l150729/",
+        "https://www.wotif.com/Things-To-Do-In-Tuebingen.d181220.Travel-Guide-Activities/",
+        "https://www.germansights.com/tubingen/",
+        "https://historicgermany.travel/historic-germany/tubingen/",
+        "https://www.heatheronhertravels.com/things-to-do-in-tubingen-germany-chocolart/",
+        "https://www.lonelyplanet.com/germany/tubingen/attractions/schloss-hohentuebingen/",
+        "https://www.pinterest.com/pin/424956914818546372/",
+        "https://1map.com/maps/germany/tuebingen-38719/",
+        "https://wikitravel.org/en/T%C3%BCbingen/",
+        "https://www.eventbrite.com/d/germany--t%C3%BCbingen/events--today/",
+        "https://visitsights.com/sightseeing-tours/Germany/T%C3%BCbingen/1/",
+        "https://www.discovergermany.com/university-town-tubingen/",
+        "https://www.tourism-bw.com/attractions/museum-der-universitaet-tuebingen-mut-alte-kulturen-52732dcb08/",
+        "https://www.keeptravel.com/germany/attraction/ozero-anlagen/",
+        "https://civis.eu/de/activities/civis-openlab/civis-open-lab-tubingen/",
+        "https://www.alltrails.com/germany/baden-wurttemberg/tubingen/",
+        "https://www.ostrichtrails.com/europe/germany/tubingen-walking-tour/",
+        "https://www.thehotelguru.com/en-eu/best-hotels-in/germany/tubingen/",
+        "https://www.cloudno7.de/en/frontpage/",
+        "https://www.wayfaringwithwagner.com/visiting-tuebingen-in-wintertime/",
+        "https://www.xn--gasthof-grbele-fib.com/en/home-1/",
+
         'https://hoelderlinturm.de/english/',
         # reichen solche datenbanken?
-
         'https://civis.eu/en/about-civis/universities/eberhard-karls-universitat-tubingen/',
         'https://tuebingenresearchcampus.com/',
-        'https://is.mpg.de/',
         # noch mehr guides, decken aber gut ab - zumal eh die einzelnen seiten idr nur auf deutsch sind
         'https://www.tripadvisor.com/Attractions-g198539-Activities-Tubingen_Baden_Wurttemberg.html',
         'https://www.medizin.uni-tuebingen.de/en-de/startseite/',
-        'https://apps.allianzworldwidecare.com/poi/hospital-doctor-and-health-practitioner-finder?PROVTYPE=PRACTITIONERS&TRANS=Doctors%20and%20Health%20Practitioners%20in%20Tuebingen,%20Germany&CON=Europe&COUNTRY=Germany&CITY=Tuebingen&choice=en/',
-        'https://www.yelp.com/search?cflt=physicians&find_loc=Tübingen%2C+Baden-W%C3%BCrttemberg%2C+Germany/',
         'https://cyber-valley.de/',
         'https://www.tuebingen.mpg.de/84547/cyber-valley/',
         'https://tuebingen.ai/',
         'https://www.eml-unitue.de/',
         'https://en.wikipedia.org/wiki/Tübingen/',
-        'https://wikitravel.org/en/Tübingen/',
         'https://www.bahnhof.de/en/tuebingen-hbf/',
-        # politics
-        # geograpy
-        'https://www.engelvoelkers.com/en-de/properties/rent-apartment/baden-wurttemberg/tubingen-kreis/',
-        'https://integreat.app/tuebingen/en/news/tu-news/',
-        'https://tunewsinternational.com/category/news-in-english/',
+
+        # company
+        'https://www.medizin.uni-tuebingen.de/',
+        'https://www.uni-tuebingen.de/',
+        'https://www.cht.com/',
+        'https://www.tuebingen.de/',
+        'https://www.rp-tuebingen.de/',
+        'https://www.kemmler.de/',
+        'https://www.lwv-eh.de/',
+        'https://www.erbe-med.com/',
+        'https://www.walter-tools.com/',
+        'https://www.phorn.de/',
+        'https://www.tagblatt.de/',
+        'https://www.udo-tuebingen.de/',
+        'https://www.ksk-tuebingen.de/',
+        'https://www.dkms.de/',
+        'https://www.cht.com/',
+        'https://www.curevac.com/',
+        'https://www.swtue.de/',
+        'https://www.roesch-fashion.com/',
+        'https://www.osiander.de/',
+        'https://www.dentalbauer.de/',
+        'https://www.dentalbauer.de/',
+        'https://www.mode-zinser.de/',
+        'https://www.zeltwanger.de/',
+        'https://www.vbidr.de/',
+        'https://www.tropenklinik.de/',
+        'https://www.science-computing.de/',
+        'https://www.brennenstuhl.com/',
+        'https://www.brillinger.de/',
+        'https://www.baeckerei-gehr.de/',
+        'https://www.immatics.com/',
+        'https://www.itdesign.de/',
+        'https://www.walter-machines.com/',
+        'https://www.altenhilfe-tuebingen.de/',
+        'https://www.syss.de/',
+        'https://www.zeltwanger.de/',
+        'https://www.itdesign.de/',
+        'https://www.syss.de/',
+        'https://www.curevac.com/',
+        'https://www.solar-distribution.baywa-re.de/',
+        'https://www.eurofins.de/',
+        'https://www.nusser-schaal.de/',
+        'https://www.cegat.de/',
+        'https://www.roesch-fashion.com/',
+        'https://www.tdmsystems.com/',
+        'https://www.electroluxprofessional.com/',
+        'https://www.bwva.de/',
+        'https://www.suedweststrom.de/',
+        'https://www.haertha.de/',
+        'https://www.gmgcolor.com/',
+        'https://www.avat.de/',
+        'https://www.kocherlutz.de/',
+        'https://www.bayer-kastner.de/',
+        'https://www.phorn.de/',
+        'https://www.kern-medical.com/',
+        'https://www.teamplan.de/',
+        'https://www.autohaus-seeger.de/',
+        'https://www.bg-kliniken.de/',
+        'https://www.team-training.de/',
+        'https://www.ovesco.com/',
+        'https://www.cumdente.com/',
+        'https://www.gmgcolor.com/',
+        'https://www.krone-tuebingen.de/',
+        'https://www.mhp-pflege.de/',
+        'https://www.zeutschel.de/',
+        'https://www.dai-tuebingen.de/',
+        'https://www.storymaker.de/',
+        'https://www.pagina.gmbh/',
+        'https://www.promotion-software.de/',
+        'https://www.fliesen-kemmler.de/',
+        'https://www.daasi.de/',
+        'https://www.verifort-capital.de/',
+        'https://www.topsim.com/',
+        'https://www.karg-und-petersen.de/',
+        'https://www.shs-capital.eu/',
+        'https://www.dr-droescher.de/',
+        'https://www.macfarlane.de/',
+        'https://www.arsenalfilm.de/',
+
+        # food
+        'https://www.tripadvisor.de/Restaurants-g198539-Tubingen_Baden_Wurttemberg.html',
+        'https://www.tripadvisor.de/Restaurants-g198539-zfp58-Tubingen_Baden_Wurttemberg.html',
+        'https://www.lieferando.de/lieferservice/essen/tuebingen-72076/',
+        'https://www.tuebingen.de/en/3504.html',
+        'https://www.nuna-store.com/',
+        'https://www.tuebingen-info.de/veranstaltungen/streetfood-fiesta-0bf84c9871/',
+        'https://www.schummeltag-streetfood.de/event/street-food-festival-tuebingen-2021/',
+        'https://www.burgermeister-cafegino.de/',
+        'https://www.faros-tuebingen.com/',
+        'https://www.slowfood.de/netzwerk/vor-ort/tuebingen/',
+        'https://de.restaurantguru.com/fast-food-Tubingen-t11/',
+        'https://www.restaurant-ranglisten.de/restaurants/ranglisten/deutschland/baden-wuerttemberg/tuebingen/kueche/slow-food/',
+        'https://uni-tuebingen.de/pt/95901/',
+        'https://www.abfall-kreis-tuebingen.de/entsorgen/verwerten/foodsharing/',
+        'https://aris-kommt.de/',
+        'https://www.slowfood.de/netzwerk/vor-ort/tuebingen/genussfuehrer/',
+        'https://foodsharing.de/?page=fairteiler&bid=6/',
+        'https://www.foodalley.de/stores/72070/Tuebingen/',
+        'https://www.facebook.com/slowfoodtuebingen/',
+        'https://www.thefork.com/restaurants/tubingen-c561333/',
+        'https://wanderlog.com/list/geoCategory/199488/where-to-eat-best-restaurants-in-tubingen/',
+        'https://guide.michelin.com/de/de/baden-wurttemberg/tbingen/restaurants/',
+        'https://mph.tuebingen.mpg.de/en/menu/',
+        'https://m.yelp.com/search?cflt=food&find_loc=Tübingen%2C+Baden-W%C3%BCrttemberg/',
+        'https://www.diegutelaune.de/',
+        'https://fierfood.eatbu.com/',
+        'https://www.superfoodz-store.com/',
+        'https://www.bongoroots.de/',
+        'https://mezeakademie.com/',
+        'https://tuebilicious.mewi-projekte.de/2021/06/06/supportyourlocals/',
+        'https://mezeakademie.com/',
+        'https://tuebilicious.mewi-projekte.de/2021/06/06/supportyourlocals/',
+        'https://www.mehrrettich.de/',
+        'https://genussart.club/food/',
+        'https://www.we-celebrate.de/foodtruck-tuebingen/',
+        'https://www.reddit.com/r/Tuebingen/comments/12ghnvz/best_place_to_grab_food_to_go/',
+        'https://www.numbeo.com/food-prices/in/Tubingen/',
+        'https://tuebingen.city-map.de/01100001/ofterdingen-steinlachtal/online-shops/food/',
+        'https://yably.de/fast-food-restaurants/tuebingen/',
+        'https://www.wurstkueche.com/en/frontpage-2/',
+        'https://samphat-thai.de/',
+        'https://www.foodtruckbooking.de/ort/72072-tubingen/',
+        'https://food-festivals.com/suche/Tübingen/',
+        'https://www.kupferblau.de/2020/12/18/die-besten-take-away-geheimtipps-in-tuebingen/',
+        'https://lous-foodtruck.de/foodtruck-tuebingen-2/',
+        'https://bueroaktiv-tuebingen.de/initiativen/praesentierensich/foodsharing-tuebingen/',
+        'https://www.miomente.de/stuttgart/kulinarische-stadtfuehrung-tuebingen-meet-und-eat-tuebingen/',
+        'https://www.die-food-trucks.de/nach-stadt/tubingen/',
+        'https://www.happycow.net/europe/germany/tubingen/',
+        'https://www.kohenoor-tuebingen.de/',
+        'https://www.kaufda.de/Filialen/Tuebingen/Fast-Food/v-c24/',
+        'https://home.meinestadt.de/tuebingen/restaurant/',
+        'https://www.dastelefonbuch.de/Branchen/Fast%20Food/Tübingen/',
+        'https://www.my-stuwe.de/en/refectory/cafeteria-unibibliothek-tuebingen/',
+        'https://www.eurofins.de/lebensmittel/labore/eurofins-food-testing-sued/eurofins-food-testing-sued/',
+        'https://www.speicher-tuebingen.de/unser-bistro/',
+        'https://www.gastroguide.de/city/tuebingen/schnell-mal-was-essen/',
+        'https://www.infosperber.ch/wirtschaft/uebriges-wirtschaft/tuebingen-mcdonalds-muss-nun-doch-einweg-steuer-zahlen/',
+        'https://www.sluurpy.de/Tübingen/restaurants/',
+        'https://www.stepstone.de/jobs/food-%26-beverage/in-Tübingen/',
+        'https://www.cositabonita.de/stores/Tübingen/',
+        'https://umweltzentrum-tuebingen.de/wordpress/programm/',
+        'https://fragdenstaat.de/anfrage/kontrollbericht-zu-asien-food-bazar-tubingen/',
+        'https://www.sueddeutsche.de/wissen/verpackungssteuer-tuebingen-plastikmuell-1.5883210/',
+        'https://foodwissen.de/kuechenstudio-tuebingen/',
+        'https://www.meinprospekt.de/tuebingen/filialen/fast-food/',
+        'https://www.littleindia-tuebingen.de/',
+        'https://www.daznbarfinder.de/lokale/122652/ts-food-gmbh/',
+        'https://www.northdata.de/TS+Food+GmbH,+Tübingen/Amtsgericht+Stuttgart+HRB+748766/',
+        'https://www.experteer.de/jobs-Tübingen-nahrungsmittel-food-cid9801ind100/',
+        'https://derproviantmeister.de/',
+        'https://www.ibyteburgers.com/standorte-kalender/',
+        'https://www.bverwg.de/pm/2023/40/',
+        'https://www.bwegt.de/land-und-leute/das-land-erleben/veranstaltungen/detail/streetfood-festival-tuebingen/schummeltag-street-food-festival/37abfd6f-5ba4-407e-8274-e06f99b4cdc7/',
+        'https://www.tagesschau.de/inland/tuebingen-verpackungssteuer-100.html',
+        'https://www.food-service.de/maerkte/news/verpackungssteuer--tuebingen-steuer-auf-einweg-to-go-verpackungen-ist-rechtens-55986/',
+        'https://unser-tuebingen.de/veranstaltung/street-food-festival-tuebingen-2023/',
+        'https://ernaehrungsrat-tuebingen.de/',
+        'https://firmeneintrag.creditreform.de/72072/7270059882/HORST_WIZEMANN_FIRE_FOOD_AND_ENTERTAINMENT/',
+        'https://www.foodtruck-mieten24.de/food-truck-mieten-in-tuebingen/',
+        'https://www.japengo.eu/',
+        'https://allevents.in/tubingen/food-drinks/',
+        'https://www.swr.de/swraktuell/baden-wuerttemberg/tuebingen/foodsharing-cafe-lebensmittel-retten-100.html',
+        'https://taz.de/Verpackungssteuer-in-Tuebingen/!5936857/',
+        'https://www.germanfoodblogs.de/interviews/2019/6/12/jan-aus-tbingen-esszettel/',
+        'https://bolt.eu/de-de/cities/tubingen/',
+        'https://de.indeed.com/Food-Science-Jobs-in-Tübingen/',
+        'https://www.schmaelzle.de/',
+        'https://www.streetquizine.de/food-truck-catering/tubingen/',
+        'https://www.erento.com/mieten/party_messe_events/gastronomie_bar/fun_food/tuebingen/',
+        'https://nachbarskind.de/',
+        'https://www.startnext.com/mehrrettich/',
+        'https://www.vhs-tuebingen.de/kurse/gesundheit/kategorie/Essen+und+Trinken/288/',
+        'https://www.neue-verpackung.de/food/verwaltungsgerichtshof-kippt-verpackungssteuer-in-tuebingen-225.html',
+        'https://www.stilwild.de/',
+        'https://meine-kunsthandwerker-termine.de/de/veranstaltung/street-food-festival-tuebingen_23109852/',
+        'https://edeka-schoeck.de/filiale-tuebingen-berliner-ring/',
+        'https://www.tuepedia.de/wiki/Hendl_Burg_(Bahnhof)/',
+        'https://www.kleinanzeigen.de/s-anzeige/emergency-food/2474714274-87-9094/',
+        'https://www.amigopizza-tuebingen.de/fast-food-lieferservice/',
+        'https://www.sam-regional.de/de/magazinbeitraege-gastronomie/1/140/slow-food/',
+        'https://freistil.beer/category/food-rebellen/',
+        'https://feinschmeckerle.de/2018/05/12/food-rebellen-stilwild-tuebingen/',
+        'https://www.11880.com/rueckwaertssuche/070719798106/',
+        'https://www.companyhouse.de/TS-Food-GmbH-Tuebingen/',
+        'https://tigers-tuebingen.de/tigers-tuebingen-kooperieren-mit-dem-berliner-performance-food-start-up/',
+        'https://www.spiegel.de/wirtschaft/service/tuebingen-plant-steuer-auf-fast-food-verpackungen-a-834b811e-1a28-4f4f-b8c3-ec4dd20659e2/',
+        'https://www.tagblatt.de/Nachrichten/Tausende-Besucher-kamen-zum-ersten-Tuebinger-Street-Food-Markt-Gaumenfreude-290830.html',
+        'https://crepes-tuebingen.de/events/kategorie/food-truck/list/?tribe_event_display=past&tribe_paged=1/',
+        'http://dailyperfectmoment.blogspot.com/2014/03/friday-food-favourite-places-cafe.html',
 
         # top 100 tuebingen
         'https://www.tuebingen.de/',
         'https://www.unterwegsunddaheim.de/2022/08/tuebingen-sehenswuerdigkeiten-in-der-universitaetsstadt-am-neckar/#:~:text=Tübingen%20ist%20eine%20der,h%C3%BCbsche%20Altstadt%20direkt%20am%20Neckarufer./',
         'https://uni-tuebingen.de/fakultaeten/philosophische-fakultaet/fachbereiche/neuphilologie/seminar-fuer-sprachwissenschaft/studium-lehre/studiengaenge/faq/warum-in-tuebingen-studieren/#:~:text=Die%20ber%C3%BChmte%20Altstadt%20mit%20ihren,nie%20%22zu%20ruhig%22%20wird./',
-        'https://www.tripadvisor.de/Attractions-g198539-Activities-Tubingen_Baden_Wurttemberg.html',
         'https://www.kreis-tuebingen.de/314579.html#:~:text=Neben%20der%20Schw%C3%A4bischen%20Alb%20und,die%20T%C3%BCbinger%20Bucht%20wie%20heute./',
         'https://www.tuebingen-info.de/',
         'https://de.wikipedia.org/wiki/Tuebingen/',
         'https://uni-tuebingen.de/',
         'https://www.kreis-tuebingen.de/Startseite.html',
-        'https://rp.baden-wuerttemberg.de/rpt/',
         'https://kunsthalle-tuebingen.de/',
         'https://uni-tuebingen.de/universitaet/',
-        'https://www.facebook.com/tuebingen.de/',
-        'https://www.tripadvisor.de/Tourism-g198539-Tubingen_Baden_Wurttemberg-Vacations.html',
         'https://www.stern.de/politik/deutschland/themen/tuebingen-4161038.html',
-        'https://www.germany.travel/de/staedte-kultur/tuebingen.html',
         'https://www.institutfrancais.de/tuebingen/',
         'https://www.landestheater-tuebingen.de/',
-        'https://www.tagblatt.de/',
         'https://www.ksk-tuebingen.de/de/home.html',
         'https://www.swtue.de/index.html',
         'https://www.dai-tuebingen.de/',
         'https://staatsanwaltschaft-tuebingen.justiz-bw.de/pb/,Lde/Startseite/',
-        'https://www.swr.de/swraktuell/baden-wuerttemberg/tuebingen/index.html',
         'https://www.sueddeutsche.de/thema/Tübingen/',
         'https://www.tsg-tuebingen.de/',
         'https://www.gea.de/neckar-alb/kreis-tuebingen.html',
         'https://www.tuemarkt.de/',
-        'https://www.youtube.com/channel/UCw8ZjcyEoZHEMnJYN_DuO6A/',
         'https://www.dzif.de/de/standorte/tuebingen/',
         'https://www.swr.de/swraktuell/baden-wuerttemberg/tuebingen/index.html',
         'https://www.tsg-tuebingen.de/',
         'https://de.wikivoyage.org/wiki/Tübingen/',
         'https://www.gea.de/neckar-alb/kreis-tuebingen.html',
         'https://www.tuemarkt.de/',
-        'https://www.youtube.com/channel/UCw8ZjcyEoZHEMnJYN_DuO6A/',
         'https://www.dzif.de/de/standorte/tuebingen/',
         'https://www.lebenshilfe-tuebingen.de/',
         'https://www.tif-tuebingen.de/',
@@ -187,135 +412,6 @@ class Crawler:
         'https://www.gruene-tuebingen.de/home/',
         'https://www.meteoblue.com/de/wetter/woche/Tübingen_deutschland_2820860/',
         'https://nikolauslauf-tuebingen.de/start/',
-        'https://sowit.de/',
-        'https://www.wetteronline.de/wetter/tuebingen/',
-        'https://www.wetter.com/deutschland/tuebingen/DE0010334.html',
-        'https://www.wetter.com/wetter_aktuell/wettervorhersage/morgen/deutschland/tuebingen/DE0010334.html',
-        'https://nachrichten.idw-online.de/2023/07/18/nationales-forschungszentrum-fuer-ki-spitzenforschung-in-tuebingen-feiert-seine-gruendung/',
-        'https://www.baunetz.de/meldungen/Meldungen-Gewerbebau_von_rundzwei_Architekten_bei_Tuebingen_8267073.html',
-        'https://www.deutschlandfunk.de/ki-zentrum-tuebingen-wird-eingeweiht-cyber-valley-dlf-dcb022f3-100.html',
-        'https://www.dasding.de/newszone/tuebingen-schule-auszeit-ukraine-krieg-100.html',
-        'https://www.sueddeutsche.de/wissen/wissenschaft-tuebingen-forschungszentrum-fuer-ki-spitzenforschung-gegruendet-dpa.urn-newsml-dpa-com-20090101-230718-99-446723/',
-        'https://www.stuttgarter-wochenblatt.de/inhalt.original-ostermann-formel-1-rennen-in-tuebingen.e9ebad2a-747e-48f3-ad04-9e102f8fd8e1.html',
-        'https://www.stuttgarter-zeitung.de/inhalt.ewald-frie-aus-tuebingen-vom-professor-zum-bestsellerautor.2e0c6208-ab09-4076-ae3b-1125129735cf.html',
-        'https://www.radiobielefeld.de/nachrichten/lokalnachrichten/detailansicht/tuebingen-dieter-thomas-kuhn-kauft-brusthaartoupet-als-meterware.html',
-        'https://www.stuttgarter-nachrichten.de/inhalt.ukrainer-in-tuebingen-drei-wochen-urlaub-vom-krieg.781d1bcf-28a3-4141-b380-43c5b6f40839.html',
-        'https://versicherungswirtschaft-heute.de/schlaglicht/2023-07-14/lg-tubingen-trifft-richtungsweisendes-urteil-gegen-cyberversicherer/',
-        'https://www.news.de/lokales/856482752/tuebingen-veranstaltungen-und-events-aktuell-im-juli-2023-konzert-comedy-freizeit-tipps-was-ist-am-wochenende-los/1/',
-
-        # food
-        'https://www.tripadvisor.de/Restaurants-g198539-Tubingen_Baden_Wurttemberg.html',
-        'https://www.tripadvisor.de/Restaurants-g198539-zfp58-Tubingen_Baden_Wurttemberg.html',
-        'https://www.lieferando.de/lieferservice/essen/tuebingen-72076/',
-        'https://www.tuebingen.de/en/3504.html',
-        'https://www.nuna-store.com/',
-        'https://www.tuebingen-info.de/veranstaltungen/streetfood-fiesta-0bf84c9871/',
-        'https://www.schummeltag-streetfood.de/event/street-food-festival-tuebingen-2021/',
-        'https://www.burgermeister-cafegino.de/',
-        'https://www.faros-tuebingen.com/',
-        'https://www.slowfood.de/netzwerk/vor-ort/tuebingen/',
-        'https://de.restaurantguru.com/fast-food-Tubingen-t11/',
-        'https://www.restaurant-ranglisten.de/restaurants/ranglisten/deutschland/baden-wuerttemberg/tuebingen/kueche/slow-food/',
-        'https://uni-tuebingen.de/pt/95901/',
-        'https://www.abfall-kreis-tuebingen.de/entsorgen/verwerten/foodsharing/',
-        'https://aris-kommt.de/',
-        'https://www.slowfood.de/netzwerk/vor-ort/tuebingen/genussfuehrer/',
-        'https://foodsharing.de/?page=fairteiler&bid=6/',
-        'https://www.foodalley.de/stores/72070/Tuebingen/',
-        'https://www.facebook.com/slowfoodtuebingen/',
-        'https://www.thefork.com/restaurants/tubingen-c561333/',
-        'https://wanderlog.com/list/geoCategory/199488/where-to-eat-best-restaurants-in-tubingen/',
-        'https://guide.michelin.com/de/de/baden-wurttemberg/tbingen/restaurants/',
-        'https://mph.tuebingen.mpg.de/en/menu/',
-        'https://m.yelp.com/search?cflt=food&find_loc=Tübingen%2C+Baden-W%C3%BCrttemberg/',
-        'https://www.diegutelaune.de/',
-        'https://fierfood.eatbu.com/',
-        'https://www.superfoodz-store.com/',
-        'https://www.bongoroots.de/',
-        'https://mezeakademie.com/',
-        'https://tuebilicious.mewi-projekte.de/2021/06/06/supportyourlocals/',
-        'https://mezeakademie.com/',
-        'https://tuebilicious.mewi-projekte.de/2021/06/06/supportyourlocals/',
-        'https://www.mehrrettich.de/',
-        'https://genussart.club/food/',
-        'https://www.we-celebrate.de/foodtruck-tuebingen/',
-        'https://www.reddit.com/r/Tuebingen/comments/12ghnvz/best_place_to_grab_food_to_go/',
-        'https://www.numbeo.com/food-prices/in/Tubingen/',
-        'https://tuebingen.city-map.de/01100001/ofterdingen-steinlachtal/online-shops/food/',
-        'https://yably.de/fast-food-restaurants/tuebingen/',
-        'https://www.wurstkueche.com/en/frontpage-2/',
-        'https://samphat-thai.de/',
-        'https://www.foodtruckbooking.de/ort/72072-tubingen/',
-        'https://food-festivals.com/suche/Tübingen/',
-        'https://www.kupferblau.de/2020/12/18/die-besten-take-away-geheimtipps-in-tuebingen/',
-        'https://lous-foodtruck.de/foodtruck-tuebingen-2/',
-        'https://bueroaktiv-tuebingen.de/initiativen/praesentierensich/foodsharing-tuebingen/',
-        'https://www.miomente.de/stuttgart/kulinarische-stadtfuehrung-tuebingen-meet-und-eat-tuebingen/',
-        'https://www.die-food-trucks.de/nach-stadt/tubingen/',
-        'https://www.happycow.net/europe/germany/tubingen/',
-        'https://www.kohenoor-tuebingen.de/',
-        'https://www.kaufda.de/Filialen/Tuebingen/Fast-Food/v-c24/',
-        'https://branchenbuch.meinestadt.de/tuebingen/brazl/100-19055-19065-54919-78204/',
-        'https://home.meinestadt.de/tuebingen/restaurant/',
-        'https://www.dastelefonbuch.de/Branchen/Fast%20Food/Tübingen/',
-        'https://www.my-stuwe.de/en/refectory/cafeteria-unibibliothek-tuebingen/',
-        'https://www.eurofins.de/lebensmittel/labore/eurofins-food-testing-sued/eurofins-food-testing-sued/',
-        'https://www.speicher-tuebingen.de/unser-bistro/',
-        'https://www.gastroguide.de/city/tuebingen/schnell-mal-was-essen/',
-        'https://www.infosperber.ch/wirtschaft/uebriges-wirtschaft/tuebingen-mcdonalds-muss-nun-doch-einweg-steuer-zahlen/',
-        'https://www.sluurpy.de/Tübingen/restaurants/',
-        'https://www.stepstone.de/jobs/food-%26-beverage/in-Tübingen/',
-        'https://www.cositabonita.de/stores/Tübingen/',
-        'https://umweltzentrum-tuebingen.de/wordpress/programm/',
-        'https://fragdenstaat.de/anfrage/kontrollbericht-zu-asien-food-bazar-tubingen/',
-        'https://www.sueddeutsche.de/wissen/verpackungssteuer-tuebingen-plastikmuell-1.5883210/',
-        'https://foodwissen.de/kuechenstudio-tuebingen/',
-        'https://www.meinprospekt.de/tuebingen/filialen/fast-food/',
-        'https://www.littleindia-tuebingen.de/',
-        'https://www.daznbarfinder.de/lokale/122652/ts-food-gmbh/',
-        'https://www.northdata.de/TS+Food+GmbH,+Tübingen/Amtsgericht+Stuttgart+HRB+748766/',
-        'https://www.experteer.de/jobs-Tübingen-nahrungsmittel-food-cid9801ind100/',
-        'https://derproviantmeister.de/',
-        'https://www.ibyteburgers.com/standorte-kalender/',
-        'https://www.bverwg.de/pm/2023/40/',
-        'https://www.bwegt.de/land-und-leute/das-land-erleben/veranstaltungen/detail/streetfood-festival-tuebingen/schummeltag-street-food-festival/37abfd6f-5ba4-407e-8274-e06f99b4cdc7/',
-        'https://www.tagesschau.de/inland/tuebingen-verpackungssteuer-100.html',
-        'https://www.food-service.de/maerkte/news/verpackungssteuer--tuebingen-steuer-auf-einweg-to-go-verpackungen-ist-rechtens-55986/',
-        'https://unser-tuebingen.de/veranstaltung/street-food-festival-tuebingen-2023/',
-        'https://ernaehrungsrat-tuebingen.de/',
-        'https://firmeneintrag.creditreform.de/72072/7270059882/HORST_WIZEMANN_FIRE_FOOD_AND_ENTERTAINMENT/',
-        'https://www.foodtruck-mieten24.de/food-truck-mieten-in-tuebingen/',
-        'https://www.japengo.eu/',
-        'https://allevents.in/tubingen/food-drinks/',
-        'https://www.swr.de/swraktuell/baden-wuerttemberg/tuebingen/foodsharing-cafe-lebensmittel-retten-100.html',
-        'https://taz.de/Verpackungssteuer-in-Tuebingen/!5936857/',
-        'https://www.germanfoodblogs.de/interviews/2019/6/12/jan-aus-tbingen-esszettel/',
-        'https://bolt.eu/de-de/cities/tubingen/',
-        'https://de.indeed.com/Food-Science-Jobs-in-Tübingen/',
-        'https://www.schmaelzle.de/',
-        'https://www.streetquizine.de/food-truck-catering/tubingen/',
-        'https://www.erento.com/mieten/party_messe_events/gastronomie_bar/fun_food/tuebingen/',
-        'https://nachbarskind.de/',
-        'https://www.startnext.com/mehrrettich/',
-        'https://www.vhs-tuebingen.de/kurse/gesundheit/kategorie/Essen+und+Trinken/288/',
-        'https://www.neue-verpackung.de/food/verwaltungsgerichtshof-kippt-verpackungssteuer-in-tuebingen-225.html',
-        'https://www.stilwild.de/',
-        'https://meine-kunsthandwerker-termine.de/de/veranstaltung/street-food-festival-tuebingen_23109852/',
-        'https://edeka-schoeck.de/filiale-tuebingen-berliner-ring/',
-        'https://www.tuepedia.de/wiki/Hendl_Burg_(Bahnhof)/',
-        'https://www.kleinanzeigen.de/s-anzeige/emergency-food/2474714274-87-9094/',
-        'https://www.amigopizza-tuebingen.de/fast-food-lieferservice/',
-        'https://www.sam-regional.de/de/magazinbeitraege-gastronomie/1/140/slow-food/',
-        'https://freistil.beer/category/food-rebellen/',
-        'https://feinschmeckerle.de/2018/05/12/food-rebellen-stilwild-tuebingen/',
-        'https://www.11880.com/rueckwaertssuche/070719798106/',
-        'https://www.companyhouse.de/TS-Food-GmbH-Tuebingen/',
-        'https://tigers-tuebingen.de/tigers-tuebingen-kooperieren-mit-dem-berliner-performance-food-start-up/',
-        'https://cafe-kunsthalle-tuebingen.com/',
-        'https://www.spiegel.de/wirtschaft/service/tuebingen-plant-steuer-auf-fast-food-verpackungen-a-834b811e-1a28-4f4f-b8c3-ec4dd20659e2/',
-        'https://www.tagblatt.de/Nachrichten/Tausende-Besucher-kamen-zum-ersten-Tuebinger-Street-Food-Markt-Gaumenfreude-290830.html',
-        'https://crepes-tuebingen.de/events/kategorie/food-truck/list/?tribe_event_display=past&tribe_paged=1/',
-        'http://dailyperfectmoment.blogspot.com/2014/03/friday-food-favourite-places-cafe.html',
 
         # sport
         'https://uni-tuebingen.de/einrichtungen/zentrale-einrichtungen/hochschulsport/home/',
@@ -326,8 +422,6 @@ class Crawler:
         'https://home.meinestadt.de/tuebingen/sport/',
         'https://www.tsg-tuebingen.de/',
         'https://www.easy-sports.com/tuebingen/',
-        'https://www.instagram.com/hochschulsport_tuebingen/?hl=de/',
-        'https://www.instagram.com/fachschaftsport_tuebingen/?hl=de/',
         'https://www.sportkreis-tuebingen.de/',
         'https://rp.baden-wuerttemberg.de/rpt/abt7/fachberater/seiten/sport/',
         'https://www.studieren-studium.com/studium/studieren/Sport-Tübingen/',
@@ -409,84 +503,6 @@ class Crawler:
         'https://netzwerk-onkoaktiv.de/institut/universitaetsklinikum-abteilung-sportmedizin-der-universitaetsklinik-tuebingen/',
         'https://tvstaufia.de/artikel/sport-und-kulturevent-in-tuebingen/',
 
-        # company
-        'https://www.medizin.uni-tuebingen.de/',
-        'https://www.uni-tuebingen.de/',
-        'https://www.cht.com/',
-        'https://www.tuebingen.de/',
-        'https://www.rp-tuebingen.de/',
-        'https://www.kemmler.de/',
-        'https://www.lwv-eh.de/',
-        'https://www.erbe-med.com/',
-        'https://www.walter-tools.com/',
-        'https://www.phorn.de/',
-        'https://www.tagblatt.de/',
-        'https://www.udo-tuebingen.de/',
-        'https://www.ksk-tuebingen.de/',
-        'https://www.dkms.de/',
-        'https://www.cht.com/',
-        'https://www.curevac.com/',
-        'https://www.swtue.de/',
-        'https://www.roesch-fashion.com/',
-        'https://www.osiander.de/',
-        'https://www.dentalbauer.de/',
-        'https://www.dentalbauer.de/',
-        'https://www.mode-zinser.de/',
-        'https://www.zeltwanger.de/',
-        'https://www.vbidr.de/',
-        'https://www.tropenklinik.de/',
-        'https://www.science-computing.de/',
-        'https://www.brennenstuhl.com/',
-        'https://www.brillinger.de/',
-        'https://www.baeckerei-gehr.de/',
-        'https://www.immatics.com/',
-        'https://www.itdesign.de/',
-        'https://www.walter-machines.com/',
-        'https://www.altenhilfe-tuebingen.de/',
-        'https://www.syss.de/',
-        'https://www.zeltwanger.de/',
-        'https://www.itdesign.de/',
-        'https://www.syss.de/',
-        'https://www.curevac.com/',
-        'https://www.solar-distribution.baywa-re.de/',
-        'https://www.eurofins.de/',
-        'https://www.nusser-schaal.de/',
-        'https://www.cegat.de/',
-        'https://www.roesch-fashion.com/',
-        'https://www.tdmsystems.com/',
-        'https://www.electroluxprofessional.com/',
-        'https://www.bwva.de/',
-        'https://www.suedweststrom.de/',
-        'https://www.haertha.de/',
-        'https://www.gmgcolor.com/',
-        'https://www.avat.de/',
-        'https://www.kocherlutz.de/',
-        'https://www.bayer-kastner.de/',
-        'https://www.phorn.de/',
-        'https://www.kern-medical.com/',
-        'https://www.teamplan.de/',
-        'https://www.autohaus-seeger.de/',
-        'https://www.bg-kliniken.de/',
-        'https://www.team-training.de/',
-        'https://www.ovesco.com/',
-        'https://www.cumdente.com/',
-        'https://www.gmgcolor.com/',
-        'https://www.krone-tuebingen.de/',
-        'https://www.mhp-pflege.de/',
-        'https://www.zeutschel.de/',
-        'https://www.dai-tuebingen.de/',
-        'https://www.storymaker.de/',
-        'https://www.pagina.gmbh/',
-        'https://www.promotion-software.de/',
-        'https://www.fliesen-kemmler.de/',
-        'https://www.daasi.de/',
-        'https://www.verifort-capital.de/',
-        'https://www.topsim.com/',
-        'https://www.karg-und-petersen.de/',
-        'https://www.shs-capital.eu/',
-        'https://www.dr-droescher.de/',
-        'https://www.macfarlane.de/',
-        'https://www.arsenalfilm.de/',
     ]
 
     # our blacklist
@@ -516,7 +532,7 @@ class Crawler:
         nltk.download('stopwords')
         nltk.download('averaged_perceptron_tagger')
         self.min_depth_limit = 0
-        self.max_depth_limit = 2
+        self.max_depth_limit = 0
         self.max_threads = 8
         self.base_crawl_delay = 2.0
 
@@ -659,16 +675,22 @@ class Crawler:
 
                     description = ""
                     description = get_description(soup)
+
                     normalized_description = ""
                     normalized_description = (
                         normalize_text(description) if description else None
                     )
 
                     content = get_page_content(soup)
+                    normalized_content = normalize_text(
+                        content) if content else None
+                    limited_content = ""
+                    limited_content = limit_string_to_50_words(
+                        content)
 
                     try:
                         keywords = get_keywords(
-                            content, normalized_title, normalized_description
+                            normalized_content, normalized_title, normalized_description
                         )
                     except Exception as e:
                         print(
@@ -678,7 +700,7 @@ class Crawler:
 
                     out_links = []
 
-                    img = str(get_image_url(soup, url))
+                    img = list(get_image_url(soup, url))
 
                     # Create the web page object
                     web_page = create_web_page_object(
@@ -694,7 +716,8 @@ class Crawler:
                         external_links,
                         in_links,
                         out_links,
-                        content,
+                        limited_content,
+                        normalized_content,
                         img,
                     )
 
@@ -761,6 +784,19 @@ class Crawler:
         Populates the in_links and out_links fields in our database.
         """
         self.db.create_inoutlinks()
+
+
+def limit_string_to_50_words(input_string):
+    # Split the input string into words
+    words = input_string.split()
+
+    # Take the first 50 words
+    limited_words = words[:50]
+
+    # Join the words back into a new string
+    limited_string = " ".join(limited_words)
+
+    return limited_string
 
 
 def get_sitemap_from_host(self, domain):
@@ -876,7 +912,7 @@ def is_text_english(text):
 
     try:
         language_code = detect(text)
-        return language_code == 'de'
+        return language_code == 'en'
     except:
         return False
 
@@ -898,6 +934,7 @@ def create_web_page_object(
     in_links,
     out_links,
     content,
+    normalized_content,
     img,
 ):
     """
@@ -937,6 +974,7 @@ def create_web_page_object(
         'in_links': in_links,
         'out_links': out_links,
         'content': content,
+        'normalized_content': normalized_content,
         'img': img,
     }
 
@@ -986,12 +1024,12 @@ def get_page_title(soup):
     title = soup.title.string if soup.title else None
 
     if title != None and is_text_english(title):
-        return translate_german_to_english(title)
-    else:
         return soup.title.string if soup.title else None
+    else:
+        return translate_to_english(title)
 
 
-def get_keywords(content, normalized_title, normalized_description):
+def get_keywords(normalized_content, normalized_title, normalized_description):
     """
     Extracts the keywords from the content using the RAKE algorithm.
 
@@ -1005,8 +1043,8 @@ def get_keywords(content, normalized_title, normalized_description):
     """
 
     concat = ""
-    if content is not None:
-        concat += content + " "
+    if normalized_content is not None:
+        concat += normalized_content + " "
     if normalized_title is not None:
         concat += normalized_title
     if normalized_description is not None:
@@ -1018,12 +1056,19 @@ def get_keywords(content, normalized_title, normalized_description):
     return keywords
 
 
-def translate_german_to_english(text):
+def translate_to_english(text):
+
     with translation_lock:
-        text = str(text)
-        translator = Translator(from_lang='de', to_lang='en')
-        translation = translator.translate(text)
-        return translation
+        try:
+            if text is None or not text:
+                return ""
+            else:
+                translator = Translator()
+                translation = translator.translate(text, src='de', dest='en')
+                return translation.text
+        except:
+            # print(f"Failed: {text}")
+            return text
 
 
 def get_description(soup):
@@ -1037,34 +1082,35 @@ def get_description(soup):
     - str or None: The description from the meta tag if found, otherwise None.
     """
     description = soup.find('meta', attrs={'name': 'description'})
-    if description and is_text_english(description):
-        return translate_german_to_english(description['content'])
+    if description != None and is_text_english(description):
+        return description['content']
     else:
-        return description['content'] if description else None
+        return translate_to_english(description['content']) if description else None
 
 
 def has_tuebingen_content(url):
     user_agent = 'TuebingenExplorer/1.0'
+    base_crawl_delay = 2.0
     try:
         response = requests.get(url)
 
-        # Check if the request is successful (status code 200)
-        if response.status_code == 200:
+        allowed_delay = is_crawling_allowed(
+            base_crawl_delay, url, user_agent)
+        allowed = allowed_delay[0]
+
+        if allowed:
             is_allowed = is_crawling_allowed(2.0, url, user_agent)
             if is_allowed[0]:
                 # Use BeautifulSoup to parse the HTML content
                 soup = BeautifulSoup(response.content, 'html.parser')
-
-                if (
-                    'tuebingen' in str(soup)
-                    or 'Tuebingen' in str(soup)
-                    or 'tübingen' in str(soup)
-                    or 'Tübingen' in str(soup)
-                    or 'tubingen' in str(soup)
-                    or 'Tubingen' in str(soup)
-                ):
-                    return True
-
+                words_to_check = ['tuebingen',
+                                  'Tuebingen',
+                                  'tübingen',
+                                  'Tübingen'
+                                  ]
+                for word in words_to_check:
+                    if soup.find(text=lambda text: word in text):
+                        return True
                 else:
                     return False
             else:
@@ -1157,6 +1203,7 @@ def get_internal_external_links(
                 external_links.append(external_link)
 
                 # Add the URL to the domain sitemap
+                # if not has_tuebingen_content(external_link):
                 domain_external_links.append(external_link)
 
             elif not href.startswith('#') and not '#' in href:
@@ -1174,11 +1221,13 @@ def get_internal_external_links(
                         if internal_link != url:
                             # check if not in sitemap
                             if internal_link not in domain_internal_links:
+                                # if not has_tuebingen_content(internal_link):
                                 with db_lock:
                                     # frontier push here
                                     # print(
                                     #     f'add internal link to frontier: {internal_link}'
                                     # )
+
                                     self.db.push_to_frontier(internal_link)
                 #             else:
                 #                 print(f'already in sitemap {internal_link}')
@@ -1289,10 +1338,22 @@ def get_page_content(soup):
     # Remove special characters (except "." and "@") and lowercase the content
     content = re.sub(r'[^\w\s.@]', '', content).lower()
 
-    if is_text_english(content):
-        content = translate_german_to_english(content)
+    # Split the content into words using spaces as the delimiter
+    word_array = content.split()
 
-    return normalize_text(content)
+    # Remove any leading/trailing whitespaces from each word in the array
+    word_array = [word.strip() for word in word_array]
+
+    # Remove empty strings from the array
+    word_array = list(filter(None, word_array))
+
+    # Join the elements in the array with an empty space in between
+    final_string = " ".join(word_array)
+
+    if final_string and not is_text_english(final_string):
+        final_string = translate_to_english(final_string)
+
+    return final_string
 
 
 def get_image_url(soup, url):
@@ -1315,31 +1376,31 @@ def get_image_url(soup, url):
     # Find the favicon tag
     favicon_tag = soup.find("link", rel="icon")
 
+    # Extract the favicon URL
+    if favicon_tag is not None:
+        favicon_url = favicon_tag.get("href", "")
+        if favicon_url:
+            favicon_url = urljoin(url, '/')[:-1] + favicon_url
+    else:
+        favicon_url = "empty"
+
     # Extract the og:image image URL
     if og_image_tag is not None:
         og_image_url = og_image_tag.get("content", "")
         if og_image_url:
-            return (
-                og_image_url
-                if og_image_url.startswith('http')
-                else 'https:' + og_image_url
-            )
+            og_image_url = og_image_url if og_image_url.startswith(
+                'http') else 'https:' + og_image_url
+
+            return [og_image_url, favicon_url]
 
     # Extract the twitter:image URL
     elif twitter_image_tag is not None:
         og_image_url = twitter_image_tag.get("content", "")
         if og_image_url:
-            return (
-                og_image_url
-                if og_image_url.startswith('http')
-                else urljoin(url, '/')[:-1] + og_image_url
-            )
+            og_image_url = og_image_url if og_image_url.startswith(
+                'http') else urljoin(url, '/')[:-1] + og_image_url
 
-    # Extract the favicon URL
-    elif favicon_tag is not None:
-        favicon_url = favicon_tag.get("href", "")
-        if favicon_url:
-            return urljoin(url, '/')[:-1] + favicon_url
+            return [og_image_url, favicon_url]
 
     return ""
 
