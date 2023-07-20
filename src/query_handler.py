@@ -19,7 +19,19 @@ class Query:
 
         # Normalize and lemmatize the query
         temp_query = src.web_crawler.normalize_text(self.user_query)
-        self.prepared_query = temp_query
+
+        # Split the original string into a list of words
+        words = temp_query.split()
+
+        # Create a set to get unique words
+        unique_words_set = set(words)
+
+        # Convert the set back to a list to preserve the order
+        unique_words_list = list(unique_words_set)
+
+        # Join the unique words back into a string
+        result_string = ' '.join(unique_words_list)
+        self.prepared_query = result_string
 
         print('Prepared query: ' + self.prepared_query)
 
@@ -83,7 +95,8 @@ class Query:
                     word_count_with_word = sum(
                         1 for wc in doc_word_counts if word in wc
                     )
-                    idf_scores[word] = math.log(doc_count / (1 + word_count_with_word))
+                    idf_scores[word] = math.log(
+                        doc_count / (1 + word_count_with_word))
 
         # Calculate TF-IDF scores
         tf_idf_scores = []

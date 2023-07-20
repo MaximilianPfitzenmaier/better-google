@@ -1,5 +1,5 @@
 import psycopg2
-
+import re
 #                                   ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
 # jeder von uns erstellt lokal eine >>database.txt<< in der die folgenden EIGENE werte stehen für
 # (dazwischen immer Enter):
@@ -166,7 +166,17 @@ class Database:
         # print(self.cursor.statusmessage)
         res = self.cursor.fetchall()
         self.connection.commit()
-        return res if res is None else [x[0] for x in res]
+        # Extract only one URL per domain
+        unique_domains = set()
+        unique_urls = []
+        for url in res:
+            domain = re.search(r'(?<=\/\/)[\w\d\.-]*', url[0]).group()
+            if domain not in unique_domains:
+                unique_urls.append(url[0])
+                unique_domains.add(domain)
+
+        return unique_urls if unique_urls else None
+        # return res if res is None else [x[0] for x in res]
 
     def remove_from_frontier(self, url):
         """
@@ -230,7 +240,8 @@ class Database:
             WHERE documents.id = subquery.id
         """
         self.cursor.execute(sql)
-        print('Tried populating the in/out_links fields: ' + self.cursor.statusmessage)
+        print('Tried populating the in/out_links fields: ' +
+              self.cursor.statusmessage)
         self.connection.commit()
         return None
 
