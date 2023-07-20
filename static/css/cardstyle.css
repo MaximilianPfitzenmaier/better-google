@@ -1,0 +1,449 @@
+body {
+    font-family: Arial, sans-serif;
+    padding: 20px;
+    transition: all 0.5s ease-out;
+  }
+
+  .num{
+    color: #545454;
+    position: absolute;
+    font-size: 32px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    transition: all 0.5s ease-out;
+    right: 16px;
+  }
+  .card_img_container{
+    display: inline-block;
+  }
+
+  .little-img{
+    height: 46px;
+    width: 46px;
+    display: inline-block;
+    margin: 0 8px;
+  }
+
+  .inner-card{
+    display: inline-block;
+  }
+
+  .card-item {
+    border-radius: 4px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+    padding: 20px;
+    width: 50%;
+    position: relative;
+  }
+  
+  .card-item h2 {
+    color: #1a0dab;;
+    font-weight: 400;
+    font-size: 24px;
+    margin-bottom: 10px;
+    transition: all 0.5s ease-out;
+  }
+  
+  .card-item p {
+    color: #545454;
+    font-size: 16px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2; 
+    -webkit-box-orient: vertical;
+    transition: all 0.5s ease-out;
+  }
+  
+  .card-item a {
+    color: #1a0dab;
+    text-decoration: none;
+  }
+  
+  .card-item a:hover {
+    text-decoration: underline;
+  }
+
+  .sticky-card {
+    position: fixed;
+    width: 45%;
+    padding: 20px;
+    min-height: 780px;
+    right: 0;
+    bottom: 0;
+}
+.sticky-card .sticky-item{
+    display: block;
+    width: 80%;
+    height: 740px;
+    margin: 0 auto;
+    background-color: #fff;
+    padding: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.15);
+    transition: all 0.5s ease-out;
+}
+
+.sticky-item a{
+    text-align: center;
+    display: block;
+    color: #000;
+    text-decoration: none;
+    transition: all 0.5s ease-out;
+}
+
+.dark .sticky-card .sticky-item{
+    box-shadow: 0 2px 8px rgba(255, 255, 255, 0.15);
+}
+.dark .card-item {
+    box-shadow: 0 2px 4px rgba(255, 255, 255, 0.1);
+}
+.page_img{
+width: 100%;
+height: auto;
+}
+
+.img-outer{
+height: 150px;
+overflow: hidden;
+}
+
+.header-title{
+    cursor: pointer;
+    transition: all 0.5s ease-out;
+    color: #1a0dab;
+}
+
+.head-2,.header{
+    font-size: 28px;
+    color: #1D1F24;
+    font-style: normal;
+    font-weight: 400;
+    text-align: center;
+    transition: all 0.5s ease-out;
+}
+
+/* Searchbar */
+
+/* Dobut chart */
+.donut-chart {
+    position: relative;
+    width: 230px;
+    height: 230px;
+    margin: auto;
+  }
+  
+  .donut-chart .percentage {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 24px;
+    font-weight: bold;
+    color: #000;
+  }
+
+/*keywords style*/
+  .keywords{
+    text-align: center;
+    justify-content: center;
+    color: #000;
+  }
+  .keywords li{
+    margin-right: 6px;
+    font-size: 20px;
+    list-style: none;
+    display: inline-block;
+  }
+  .keywords li span{
+    display: block;
+    text-align: center;
+  }
+
+/* search logo */
+.tue-logo-container{
+    position: fixed;
+    right: 0;
+    top: 0;
+    width: 45%;
+    padding: 20px;
+
+    .tue-logo{
+        display: block;
+        cursor: pointer;
+        margin: auto;
+    }
+
+
+}
+
+  /* moon button*/
+
+  #moon-button {
+    width: 100px;
+    height: 30px;
+    cursor: pointer;
+    background-color: transparent;
+    border: none;
+    position: absolute;
+    left: 9%;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.25);
+    transition: all 0.5s ease-out;
+  }
+  #moon-button.clicked{
+    background-color: #000;
+    transition: all 0.5s ease-out;
+  }
+  
+  #moon-circle {
+    width: 20px;
+    height: 20px;
+    margin: auto;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.85);
+    background-color: #fff;
+    border-radius: 50%;
+    position: relative;
+    z-index: 1;
+  }
+  
+  #moon-overlay {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-155%, -50%);
+    width: 100%;
+    height: 100%;
+    background-color: #fff;
+    border-radius: 50%;
+    transition: all 0.5s ease-out;
+  }
+  
+  #moon-button.clicked #moon-overlay {
+    width: 100%;
+    transform: translate(-95%, -50%);
+    background-color: #000;
+    transition: all 0.5s ease-out;
+  }
+
+
+/* dark mode */
+  body.dark{
+    background-color: #000;
+    transition: all 0.5s ease-out;
+}
+
+.dark .num{
+  color: #fff;
+}
+
+.dark .tue-logo{
+    filter: invert(1);
+}
+
+.dark .card-item{
+
+    background-color: #000;
+    transition: all 0.5s ease-out;
+}
+
+.dark .card-item p, .dark .header-title {
+    color: #fff;
+
+}
+
+.dark .sticky-item a{
+    text-align: center;
+    display: block;
+    color: #fff;
+    text-decoration: none;
+}
+
+.dark .header-title{
+    cursor: pointer;
+    transition: all 0.5s ease-out;
+}
+
+.dark .head-2,.dark .header{
+    font-size: 28px;
+    color: #fff;
+    font-style: normal;
+    font-weight: 400;
+    text-align: center;
+    transition: all 0.5s ease-out;
+}
+
+.dark .sticky-card .sticky-item{
+    background-color: #000;
+}
+.dark .inner-card a {
+    color: #a0a0a0;
+}
+.dark .keywords{
+    text-align: center;
+    justify-content: center;
+    color: #fff;
+  }
+
+  .dark  .donut-chart .percentage {
+    color: #fff;
+  }
+  
+
+  .inner-card:hover .header-title{
+    text-decoration: underline;
+}
+
+.inner-card:hover a{
+    text-decoration: underline;
+}
+
+/* Popup search */
+
+#overlay-search {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    z-index: 999;
+    display: none;
+  }
+  .logo{
+    margin: 20px auto;
+    filter: invert(1);
+    display: block;
+  }
+
+  #popup-search {
+    position: fixed;
+    width: 50%;
+    top: 45%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    padding: 20px;
+    z-index: 1000;
+    display: none;
+  }
+  
+  #close-popup-search {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    cursor: pointer;
+  }
+  
+  .tue-logo {
+    cursor: pointer;
+  }
+
+  #submit_form {
+    position: absolute;
+    width: 100%;
+    padding: 10px;
+    background-color: #f4f4f4;
+    border-radius: 20px;
+    margin-top: 6px;
+    -webkit-box-shadow: 0px 0px 30px -1px rgba(0,0,0,0.25); 
+    box-shadow: 0px 0px 30px -1px rgba(0,0,0,0.25);
+  }
+  
+  .search-container input {
+    flex: 1;
+    border: none;
+    outline: none;
+    background: transparent;
+    font-size: 16px;
+    margin-left: 10px;
+    width: 100%;
+  }
+  
+  .search-container input::placeholder {
+    color: #999999;
+  }
+  
+/* popup */
+.yousure{
+  display: block;
+}
+
+.surebutton{
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  background-color: #4285f4;
+  color: #fff;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 999;
+  display: none;
+}
+
+.popup {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: #fff;
+  padding: 20px;
+  text-align: center;
+  z-index: 1000;
+  display: none;
+}
+
+  /* Empty results */
+
+.sticky-item.info-card-empty{
+  right: 10% !important;
+  padding: 0;
+  margin: 2% 9%;
+  position: absolute;
+}
+.wow_img{
+  height: 100%;
+  width: 100%;
+  position: absolute;
+  border-radius: 10px;
+}
+
+.emptyp{
+  position: absolute;
+  font-size: 38px;
+  font-family: cursive;
+  color: #fff;
+  z-index: 1;
+}
+
+.emptyp1{
+  right: 51%;
+  top: 18%;
+}
+
+.emptyp2{
+  right: 18%;
+  top: 46%;
+}
+
+.emptyp3{
+  bottom: 14%;
+  right: 46%;
+}
+
+.emptyp4{
+  left: 12%;
+}
