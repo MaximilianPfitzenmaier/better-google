@@ -517,10 +517,8 @@ class Crawler:
         nltk.download('averaged_perceptron_tagger')
         self.min_depth_limit = 0
         self.max_depth_limit = 2
-        self.max_threads = 4
+        self.max_threads = 8
         self.base_crawl_delay = 2.0
-        # self.wordnet_local = threading.local()
-        # self.wordnet_local.lock = threading.Lock()
 
         # If the frontier is empty, we load it with our initial frontier
         if self.db.check_frontier_empty():

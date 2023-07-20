@@ -1,6 +1,6 @@
 # Urls angeordnet in der READ_ME Reihenfolge
 
-frontier = {
+frontier = [
     'https://hoelderlinturm.de/english/',
     # reichen solche datenbanken?
 
@@ -28,7 +28,6 @@ frontier = {
     'https://www.tuebingen.de/',
     'https://www.unterwegsunddaheim.de/2022/08/tuebingen-sehenswuerdigkeiten-in-der-universitaetsstadt-am-neckar/#:~:text=T%C3%BCbingen%20ist%20eine%20der,h%C3%BCbsche%20Altstadt%20direkt%20am%20Neckarufer./',
     'https://uni-tuebingen.de/fakultaeten/philosophische-fakultaet/fachbereiche/neuphilologie/seminar-fuer-sprachwissenschaft/studium-lehre/studiengaenge/faq/warum-in-tuebingen-studieren/#:~:text=Die%20ber%C3%BChmte%20Altstadt%20mit%20ihren,nie%20%22zu%20ruhig%22%20wird./',
-    'https://www.tripadvisor.de/Attractions-g198539-Activities-Tubingen_Baden_Wurttemberg.html',
     'https://www.kreis-tuebingen.de/314579.html#:~:text=Neben%20der%20Schw%C3%A4bischen%20Alb%20und,die%20T%C3%BCbinger%20Bucht%20wie%20heute./',
     'https://www.tuebingen-info.de/',
     'https://de.wikipedia.org/wiki/Tuebingen/',
@@ -38,7 +37,6 @@ frontier = {
     'https://kunsthalle-tuebingen.de/',
     'https://uni-tuebingen.de/universitaet/',
     'https://www.facebook.com/tuebingen.de/',
-    'https://www.tripadvisor.de/Tourism-g198539-Tubingen_Baden_Wurttemberg-Vacations.html',
     'https://www.stern.de/politik/deutschland/themen/tuebingen-4161038.html',
     'https://www.germany.travel/de/staedte-kultur/tuebingen.html',
     'https://www.institutfrancais.de/tuebingen/',
@@ -166,8 +164,6 @@ frontier = {
     'https://www.news.de/lokales/856482752/tuebingen-veranstaltungen-und-events-aktuell-im-juli-2023-konzert-comedy-freizeit-tipps-was-ist-am-wochenende-los/1/',
 
     # food
-    'https://www.tripadvisor.de/Restaurants-g198539-Tubingen_Baden_Wurttemberg.html',
-    'https://www.tripadvisor.de/Restaurants-g198539-zfp58-Tubingen_Baden_Wurttemberg.html',
     'https://www.lieferando.de/lieferservice/essen/tuebingen-72076/',
     'https://www.tuebingen.de/en/3504.html',
     'https://www.nuna-store.com/',
@@ -375,7 +371,6 @@ frontier = {
 
 
     # company
-    'https://www.medizin.uni-tuebingen.de/',
     'https://www.uni-tuebingen.de/',
     'https://www.cht.com/',
     'https://www.tuebingen.de/',
@@ -452,4 +447,4 @@ frontier = {
     'https://www.dr-droescher.de/',
     'https://www.macfarlane.de/',
     'https://www.arsenalfilm.de/',
-},
+]
