@@ -20,6 +20,8 @@ class Database:
         self.create_documents_table()
         self.create_visited_urls_table()
         self.create_frontier_table()
+        self.create_frontier_table1()
+        self.create_frontier_table2()
         self.create_sitemap_table()
         self.connection.commit()
         print('Database tables ready.')
@@ -73,7 +75,7 @@ class Database:
                     SELECT id, unnest(keywords)
                     FROM documents
                 )
-            SELECT d.id, d.url, d.title, d.description, d.content, d.img, d.in_links, d.keywords
+            SELECT d.id, d.url, d.title, d.description, d.content, d.img, d.in_links, d.keywords, d.normalized_content
             FROM documents AS d
             WHERE d.id IN (SELECT DISTINCT d1.id
                            FROM doc_key AS d1, query_key AS q
@@ -93,7 +95,7 @@ class Database:
         Returns:
         The new entry or None if an error was encountered.
         """
-        sql = "INSERT INTO documents VALUES (default,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING *"
+        sql = "INSERT INTO documents VALUES (default,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING *"
         try:
             self.cursor.execute(
                 sql,
@@ -104,14 +106,14 @@ class Database:
                     element.get("keywords", None),
                     element.get("description", None),
                     element.get("normalized_description", None)
-                    if element.get("normalized_description", None)
-                    else [],
+                    if element.get("normalized_description", None) else [],
                     element.get("internal_links", []),
                     element.get("external_links", []),
                     element.get("in_links", None),
                     element.get("out_links", None),
                     element.get("content", None),
-                    element.get("img", None),
+                    element.get("img", []),
+                    element.get("normalized_content", None),
                 ),
             )
             # print(self.cursor.statusmessage)
@@ -120,7 +122,6 @@ class Database:
         except Exception as err:
             print('Error adding doc to db:\n' + err.args[0])
             self.connection.rollback()
-
             return
 
     def push_to_frontier(self, url):
@@ -132,6 +133,52 @@ class Database:
         """
         sql = """
             INSERT INTO frontier 
+            SELECT %s
+            WHERE NOT EXISTS (
+                SELECT 1
+                FROM visited_urls
+                WHERE url = %s )
+        """
+        try:
+            self.cursor.execute(sql, (url, url))
+            # print(self.cursor.statusmessage)
+            self.connection.commit()
+        except Exception as err:
+            # print(err.args[0])
+            self.connection.rollback()
+
+    def push_to_frontier1(self, url):
+        """
+        Push a new value to the frontier. Will only add unique values, duplicates will be rejected.
+
+        Parameters:
+        - url (string): The url to add to the frontier.
+        """
+        sql = """
+            INSERT INTO frontier1 
+            SELECT %s
+            WHERE NOT EXISTS (
+                SELECT 1
+                FROM visited_urls
+                WHERE url = %s )
+        """
+        try:
+            self.cursor.execute(sql, (url, url))
+            # print(self.cursor.statusmessage)
+            self.connection.commit()
+        except Exception as err:
+            # print(err.args[0])
+            self.connection.rollback()
+
+    def push_to_frontier2(self, url):
+        """
+        Push a new value to the frontier. Will only add unique values, duplicates will be rejected.
+
+        Parameters:
+        - url (string): The url to add to the frontier.
+        """
+        sql = """
+            INSERT INTO frontier2
             SELECT %s
             WHERE NOT EXISTS (
                 SELECT 1
@@ -178,6 +225,70 @@ class Database:
         return unique_urls if unique_urls else None
         # return res if res is None else [x[0] for x in res]
 
+    def get_from_frontier1(self, amount):
+        """
+        Gets entries from the frontier.
+
+        Parameters:
+        - amount (int): The amount of entries we'd like to receive
+
+        Returns:
+        A list of url (string) or None if the frontier is empty.
+        """
+        sql = """
+            SELECT DISTINCT ON (substring(url from '(?<=\/\/)[\w\d\.-]*'))
+                url
+            FROM frontier1
+            LIMIT %s
+        """
+        self.cursor.execute(sql, (amount,))
+        # print(self.cursor.statusmessage)
+        res = self.cursor.fetchall()
+        self.connection.commit()
+        # Extract only one URL per domain
+        unique_domains = set()
+        unique_urls = []
+        for url in res:
+            domain = re.search(r'(?<=\/\/)[\w\d\.-]*', url[0]).group()
+            if domain not in unique_domains:
+                unique_urls.append(url[0])
+                unique_domains.add(domain)
+
+        return unique_urls if unique_urls else None
+        # return res if res is None else [x[0] for x in res]
+
+    def get_from_frontier2(self, amount):
+        """
+        Gets entries from the frontier.
+
+        Parameters:
+        - amount (int): The amount of entries we'd like to receive
+
+        Returns:
+        A list of url (string) or None if the frontier is empty.
+        """
+        sql = """
+            SELECT DISTINCT ON (substring(url from '(?<=\/\/)[\w\d\.-]*'))
+                url
+            FROM frontier2
+            LIMIT %s
+        """
+        self.cursor.execute(sql, (amount,))
+        # print(self.cursor.statusmessage)
+        res = self.cursor.fetchall()
+        self.connection.commit()
+        # Extract only one URL per domain
+        unique_domains = set()
+        unique_urls = []
+        for url in res:
+            domain = re.search(r'(?<=\/\/)[\w\d\.-]*', url[0]).group()
+            if domain not in unique_domains:
+                unique_urls.append(url[0])
+                unique_domains.add(domain)
+
+        return unique_urls if unique_urls else None
+        # return res if res is None else [x[0] for x in res]
+
     def remove_from_frontier(self, url):
         """
         Remove entries from the frontier.
@@ -196,6 +307,42 @@ class Database:
         self.connection.commit()
         return None
 
+    def remove_from_frontier1(self, url):
+        """
+        Remove entries from the frontier.
+
+        Parameters:
+        - urls (string[]): The list of urls to remove.
+
+        Returns:
+        None
+        """
+        sql = """
+            DELETE FROM frontier1
+            WHERE url = %s
+        """
+        self.cursor.execute(sql, (url,))
+        self.connection.commit()
+        return None
+
+    def remove_from_frontier2(self, url):
+        """
+        Remove entries from the frontier.
+
+        Parameters:
+        - urls (string[]): The list of urls to remove.
+
+        Returns:
+        None
+        """
+        sql = """
+            DELETE FROM frontier2
+            WHERE url = %s
+        """
+        self.cursor.execute(sql, (url,))
+        self.connection.commit()
+        return None
+
     def check_frontier_empty(self):
         """
         Checks whether the frontier still has elements in it.
@@ -206,6 +353,38 @@ class Database:
         sql = """
             SELECT * FROM frontier LIMIT 1
         """
+        self.cursor.execute(sql)
+        # print(self.cursor.statusmessage)
+        res = self.cursor.fetchone()
+        self.connection.commit()
+        return True if res is None else False
+
+    def check_frontier_empty1(self):
+        """
+        Checks whether the frontier still has elements in it.
+
+        Returns:
+        True or False depending on whether the table has rows.
+        """
+        sql = """
+            SELECT * FROM frontier1 LIMIT 1
+        """
+        self.cursor.execute(sql)
+        # print(self.cursor.statusmessage)
+        res = self.cursor.fetchone()
+        self.connection.commit()
+        return True if res is None else False
+
+    def check_frontier_empty2(self):
+        """
+        Checks whether the frontier still has elements in it.
+
+        Returns:
+        True or False depending on whether the table has rows.
+        """
+        sql = """
+                SELECT * FROM frontier2 LIMIT 1
+            """
         self.cursor.execute(sql)
         # print(self.cursor.statusmessage)
         res = self.cursor.fetchone()
@@ -341,19 +520,20 @@ class Database:
         """
         sql = """
             CREATE TABLE IF NOT EXISTS documents (
-                id               SERIAL PRIMARY KEY,
-                url              TEXT NOT NULL UNIQUE,
-                title            TEXT,
-                norm_title       TEXT,
-                keywords         TEXT[],
-                description      TEXT,
-                norm_description TEXT,
-                internal_links   TEXT[],
-                external_links   TEXT[],
-                in_links         INT[],
-                out_links        TEXT[],
-                content          TEXT,
-                img              TEXT
+                id                 SERIAL PRIMARY KEY,
+                url                TEXT NOT NULL UNIQUE,
+                title              TEXT,
+                norm_title         TEXT,
+                keywords           TEXT[],
+                description        TEXT,
+                norm_description   TEXT,
+                internal_links     TEXT[],
+                external_links     TEXT[],
+                in_links           INT[],
+                out_links          TEXT[],
+                normalized_content TEXT,
+                img                TEXT[],
+                content            TEXT
             )
         """
         self.cursor.execute(sql)
@@ -398,12 +578,38 @@ class Database:
         self.cursor.execute(sql)
         # print(self.cursor.statusmessage)
 
+    def create_frontier_table1(self):
+        """
+        Creates the table for our frontier which should hold the latest state of our crawling process.
+        """
+        sql = """
+            CREATE TABLE IF NOT EXISTS frontier1 (
+                url TEXT UNIQUE
+            )
+        """
+        self.cursor.execute(sql)
+        # print(self.cursor.statusmessage)
+
+    def create_frontier_table2(self):
+        """
+        Creates the table for our frontier which should hold the latest state of our crawling process.
+        """
+        sql = """
+            CREATE TABLE IF NOT EXISTS frontier2 (
+                url TEXT UNIQUE
+            )
+        """
+        self.cursor.execute(sql)
+        # print(self.cursor.statusmessage)
+
     def drop_all_tables(self):
         """
         Drops all our tables. Intended to be used while developing. Do not call in code.
         """
         sql = """
             DROP TABLE IF EXISTS frontier;
+            DROP TABLE IF EXISTS frontier1;
+            DROP TABLE IF EXISTS frontier2;
             DROP TABLE IF EXISTS visited_urls;
             DROP TABLE IF EXISTS documents;
             DROP TABLE IF EXISTS sitemap;
