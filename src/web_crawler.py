@@ -29,12 +29,46 @@ kw_model = keybert.KeyBERT()
 
 
 class CrawlThread(threading.Thread):
+    """
+        CrawlThread function description:
+        This class represents a thread that is responsible for crawling a specific URL using the provided crawler.
+
+        Parameters:
+        - crawler: An instance of the Crawler class.
+        - url: The URL to be crawled.
+
+        Returns:
+        - None
+        """
+
     def __init__(self, crawler, url):
+        """
+        __init__ function description:
+        Initializes a CrawlThread instance.
+
+        Parameters:
+        - crawler: An instance of the Crawler class.
+        - url: The URL to be crawled.
+
+        Returns:
+        - None
+        """
         super().__init__()
         self.crawler = crawler
         self.url = url
 
     def run(self):
+        """
+        run function description:
+        Executes the crawling process for the provided URL using the associated Crawler.
+
+        Parameters:
+        - None
+
+        Returns:
+        - None
+        """
+
         self.crawler.crawl_url(self.url)
 
 
@@ -329,11 +363,27 @@ class Crawler:
         'https://maps.google.com/',
         'https://create.twitter.com/',
         'https://is.mpg.de',
+        'https://www.expedia.co.uk',
+        'https://www.reservix.de/',
+        'https://www.travelocity.com',
+        'https://www.wotif.com/',
+
     ]
 
     db = None
 
     def __init__(self, db) -> None:
+        """
+        __init__ function description:
+        Initializes an instance of the Crawler class.
+
+        Parameters:
+        - db: The database instance used to store crawled data.
+
+        Returns:
+        - None
+        """
+
         self.db = db
         self.user_agent = 'TuebingenExplorer/1.0'
         nltk.download('punkt')
@@ -344,7 +394,7 @@ class Crawler:
         self.max_depth_limit = 2
         self.max_threads = 12
         self.base_crawl_delay = 2.0
-        self.frontier = 1
+        self.frontier = 2
 
         # If the frontier is empty, we load it with our initial frontier
         if self.frontier == 0:
@@ -366,6 +416,7 @@ class Crawler:
 
     def crawl_url(self, url):
         """
+        crawl_url function description:
         Crawls a web page and extracts relevant information.
 
         Parameters:
@@ -536,6 +587,16 @@ class Crawler:
 
     #  Start crawling all URLs in the frontier
     def crawl(self):
+        """
+        crawl function description:
+        Initiates the crawling process.
+
+        Parameters:
+        - None
+
+        Returns:
+        - None
+        """
         threads = []
         while True:
             with db_lock:
@@ -570,12 +631,30 @@ class Crawler:
 
     def create_inout_links(self):
         """
-        Populates the in_links and out_links fields in our database.
+        create_inout_links function description:
+        Populates the in_links and out_links fields in the database.
+
+        Parameters:
+        - None
+
+        Returns:
+        - None
         """
         self.db.create_inoutlinks()
 
 
 def limit_string_to_50_words(input_string):
+    """
+    limit_string_to_50_words function description:
+    Limits the input string to contain only the first 50 words.
+
+    Parameters:
+    - input_string (str): The input string to be limited.
+
+    Returns:
+    - str: The limited string containing the first 50 words.
+    """
+
     # Split the input string into words
     words = input_string.split()
 
@@ -590,6 +669,7 @@ def limit_string_to_50_words(input_string):
 
 def get_sitemap_from_host(self, domain):
     """
+    get_sitemap_from_host function description:
     Gets the sitemap from the given domain.
 
     Parameters:
@@ -598,6 +678,7 @@ def get_sitemap_from_host(self, domain):
     Returns:
     - list: The sitemap list of the domain, or an empty list if the host is not found.
     """
+
     with db_lock:
         try:
             sitemap = list(self.db.get_sitemap_from_domain(domain))
@@ -609,15 +690,17 @@ def get_sitemap_from_host(self, domain):
 
 def set_sitemap_to_host(self, domain, array_to_set):
     """
-    Gets the sitemap from the given domain.
+    set_sitemap_to_host function description:
+    Sets the sitemap for the given domain in the database.
 
     Parameters:
-    - domain
-    - self
+    - domain (string): The domain to update the sitemap for.
+    - array_to_set (list): The sitemap list to set for the domain.
 
     Returns:
-    - list: the sitemap list of the domain.
+    - None
     """
+
     with db_lock:
         try:
             # update the domain_internal_links
@@ -628,6 +711,16 @@ def set_sitemap_to_host(self, domain, array_to_set):
 
 
 def add_external_link_to_sitemap(self, domain_external_links):
+    """
+    add_external_link_to_sitemap function description:
+    Adds the external links to the sitemap of their respective domains in the database.
+
+    Parameters:
+    - domain_external_links (list): A list of external links to be added to the sitemap.
+
+    Returns:
+    - None
+    """
     # add the external links to the sitemap
     for external in domain_external_links:
 
@@ -642,9 +735,6 @@ def add_external_link_to_sitemap(self, domain_external_links):
         # get sitemap
         sitemap = get_sitemap_from_host(self, domain)
 
-        # print(f'DOMAIN: {domain}')
-        # print(f'EXTERNAL: {external}')
-
         # add this link to the sitemap
         if external not in sitemap:
             sitemap.append(external)
@@ -653,6 +743,16 @@ def add_external_link_to_sitemap(self, domain_external_links):
 
 
 def make_pretty_url(link):
+    """
+    make_pretty_url function description:
+    Formats the input URL to have a consistent and pretty representation.
+
+    Parameters:
+    - link (str): The input URL to be formatted.
+
+    Returns:
+    - str: The formatted URL.
+    """
     # prepare link
     if not link.endswith(".html") and not link.endswith(".aspx") and not link.endswith('.pdf'):
         link = (
@@ -689,13 +789,14 @@ def normalize_german_chars(text):
 
 def is_text_english(text):
     """
-    Checks if the language of a text is English.
+    is_text_english function description:
+    Checks if the provided text is in English.
 
     Parameters:
-    - text (string): The Text to check.
+    - text (str): The input text to be checked.
 
     Returns:
-    - bool: True if the language is German, False otherwise.
+    - bool: True if the text is in English, False otherwise.
     """
     text = str(text)
 
@@ -704,9 +805,6 @@ def is_text_english(text):
         return language_code == 'en'
     except:
         return False
-
-
-# Crawler Functions
 
 
 def create_web_page_object(
@@ -727,26 +825,28 @@ def create_web_page_object(
     img,
 ):
     """
-    Creates a web page object.
+    create_web_page_object function description:
+    Creates a dictionary representing a web page object with various attributes.
 
     Parameters:
-    - id (int): The ID of the web page.
-    - index (int | none): The index of the web page.
+    - id (int): The web page ID.
     - url (str): The URL of the web page.
+    - index (None or int): The index of the web page.
     - title (str): The title of the web page.
     - normalized_title (str): The normalized title of the web page.
-    - keywords (list): The keywords generated from the content.
-    - description (str): The description from the description meta tag.
-    - normalized description (str): The normalized description from the description meta tag.
-    - internal_links (list): A list of internal links (URLs within the same domain).
-    - external_links (list): A list of external links (URLs outside the current domain).
-    - in_links (list): An empty list to store incoming links from other pages.
-    - out_links (list): A list of URLs extracted from anchor tags on the page.
-    - content (str): The plain text content of the web page.
-    - img (str): The URL to the thumbnail.
+    - keywords (list): The list of keywords associated with the web page.
+    - description (str): The description of the web page.
+    - normalized_description (str): The normalized description of the web page.
+    - internal_links (list): The list of internal links on the web page.
+    - external_links (list): The list of external links on the web page.
+    - in_links (list): The list of incoming links to the web page.
+    - out_links (list): The list of outgoing links from the web page.
+    - content (str): The content of the web page.
+    - normalized_content (str): The normalized content of the web page.
+    - img (list): The list of image URLs on the web page.
 
     Returns:
-    - dictionary: A dictionary representing the web page object.
+    - dict: A dictionary representing the web page object with various attributes.
     """
 
     return {
@@ -802,13 +902,14 @@ def is_crawling_allowed(base_crawl_delay, url, user_agent):
 
 def get_page_title(soup):
     """
-    Extracts the title of a web page from the given BeautifulSoup object.
+    get_page_title function description:
+    Retrieves the page title from the provided BeautifulSoup object.
 
     Parameters:
-    - soup (BeautifulSoup): The BeautifulSoup object representing the parsed HTML content.
+    - soup (BeautifulSoup): The BeautifulSoup object representing the web page content.
 
     Returns:
-    - str or None: The title of the web page if found, otherwise None.
+    - str: The page title if found and in English, otherwise the translated title.
     """
     try:
         title = soup.title.string if soup.title else None
@@ -827,7 +928,7 @@ def get_keywords(normalized_content, normalized_title, normalized_description):
     Extracts the keywords from the content using the RAKE algorithm.
 
     Parameters:
-    - content (str): The text content to extract keywords from.
+    - normalized_content (str): The normalized_content to extract keywords from.
     - normalized_title (str): The normalized_title to extract keywords from.
     - normalized_description (str): The normalized_description to extract keywords from.
 
@@ -850,7 +951,16 @@ def get_keywords(normalized_content, normalized_title, normalized_description):
 
 
 def translate_to_english(text):
+    """
+    translate_to_english function description:
+    Translates the provided text from German to English.
 
+    Parameters:
+    - text (str): The text to be translated.
+
+    Returns:
+    - str: The translated text in English, or an empty string if translation fails.
+    """
     with translation_lock:
         try:
             if text is None or not text:
@@ -872,13 +982,14 @@ def translate_to_english(text):
 
 def get_description(soup):
     """
-    Extracts the description from the description meta tag of a web page from the given BeautifulSoup object.
+    get_description function description:
+    Retrieves the description meta tag from the provided BeautifulSoup object.
 
     Parameters:
-    - soup (BeautifulSoup): The BeautifulSoup object representing the parsed HTML content.
+    - soup (BeautifulSoup): The BeautifulSoup object representing the web page content.
 
     Returns:
-    - str or None: The description from the meta tag if found, otherwise None.
+    - str: The content of the description meta tag if found and in English, otherwise the translated content.
     """
     try:
         description = soup.find('meta', attrs={'name': 'description'})
@@ -891,6 +1002,16 @@ def get_description(soup):
 
 
 def has_tuebingen_content(url):
+    """
+    has_tuebingen_content function description:
+    Checks if the provided URL contains content related to Tübingen.
+
+    Parameters:
+    - url (str): The URL to be checked.
+
+    Returns:
+    - bool: True if the URL contains Tübingen-related content, False otherwise.
+    """
     user_agent = 'TuebingenExplorer/1.0'
     base_crawl_delay = 2.0
     try:
@@ -927,18 +1048,20 @@ def get_internal_external_links(
     soup, domain_internal_links, domain_external_links, host, url, self
 ):
     """
-    Extracts the internal and external links from a web page from the given BeautifulSoup object.
+    get_internal_external_links function description:
+    Retrieves internal and external links from the provided BeautifulSoup object and updates the link lists.
 
     Parameters:
-    - soup (BeautifulSoup): The BeautifulSoup object representing the parsed HTML content.
+    - soup (BeautifulSoup): The BeautifulSoup object representing the web page content.
+    - domain_internal_links (list): A list of internal links for the domain.
+    - domain_external_links (list): A list of external links for the domain.
+    - host (str): The host of the web page.
     - url (str): The URL of the web page.
+    - self: The instance of the current class.
 
     Returns:
-    - tuple: A tuple containing two lists:
-        - list: The internal links (URLs within the same domain).
-        - list: The external links (URLs outside the current domain).
+    - tuple: A tuple containing the updated internal and external link lists for the domain.
     """
-
     url = make_pretty_url(url)
 
     # get the base url
@@ -993,14 +1116,6 @@ def get_internal_external_links(
                 #                         #     f'add external link to frontier: {external_link}'
                 #                         # )
                 #                         self.db.push_to_frontier(external_link)
-                #             else:
-                #                 print(f'already in sitemap {external_link}')
-                #         else:
-                #             print(f'me myself and I {external_link}')
-                #     else:
-                #         print(f'max depth {external_link}')
-                # else:
-                #     print(f'blacklisted {external_link}')
 
                 # add all internal links to web_page_property
                 external_links.append(external_link)
@@ -1024,18 +1139,10 @@ def get_internal_external_links(
                         # check if the internal link is the same url
                         if internal_link != url:
                             # check if not in sitemap
-                            # domain = urljoin(internal_link, '/')
-                            # domain = make_pretty_url(domain)
-                            # sitemap_from_this_host = get_sitemap_from_host(
-                            #     self, domain)
-                            # if internal_link not in get_sitemap_from_host:
                             if internal_link not in domain_internal_links:
                                 # if not has_tuebingen_content(internal_link):
                                 with db_lock:
                                     # frontier push here
-                                    # print(
-                                    #     f'add internal link to frontier: {internal_link}'
-                                    # )
 
                                     if depth == 0:
                                         self.db.push_to_frontier(
@@ -1047,15 +1154,6 @@ def get_internal_external_links(
                                     else:
                                         self.db.push_to_frontier2(
                                             internal_link)
-                #             else:
-                #                 print(f'already in sitemap {internal_link}')
-                #         else:
-                #             print(f'me myself and I {internal_link}')
-                #     else:
-                #         print(f'max depth {internal_link}')
-                # else:
-                #     print(f'blacklisted {internal_link}')
-
                 # add all internal links to web_page_property
                 internal_links.append(internal_link)
 
@@ -1129,7 +1227,7 @@ def get_page_content(soup):
     - soup (BeautifulSoup): The BeautifulSoup object representing the parsed HTML content.
 
     Returns:
-    - str: The lemmatized and normalized content of the web page.
+    - str: content of the web page.
     """
     # Get the remaining content
     content = str(soup)
@@ -1176,15 +1274,17 @@ def get_page_content(soup):
 
 def get_image_url(soup, url):
     """
-    Extracts the og:twitter image URL or favicon URL from the given BeautifulSoup object.
+    get_image_url function description:
+    Retrieves the image URL from the provided BeautifulSoup object.
 
     Parameters:
-    - soup (BeautifulSoup): The BeautifulSoup object representing the parsed HTML content.
+    - soup (BeautifulSoup): The BeautifulSoup object representing the web page content.
     - url (str): The URL of the web page.
 
     Returns:
-    - str: The og:image URL if found, otherwise the og:twitter image URL if found, otherwise the favicon URL, or an empty string if both are not found.
+    - list: A list containing the extracted og:image URL and favicon URL.
     """
+
     # Find the og:twitter image tag
     og_image_tag = soup.find("meta", attrs={"property": "og:image"})
 
@@ -1224,6 +1324,16 @@ def get_image_url(soup, url):
 
 
 def pos_tagger(tag):
+    """
+    pos_tagger function description:
+    Maps the part-of-speech tag to the appropriate WordNet POS tag.
+
+    Parameters:
+    - tag (str): The part-of-speech tag to be mapped.
+
+    Returns:
+    - None or str: The WordNet POS tag corresponding to the input tag, or None if the tag is not recognized.
+    """
     if tag.startswith('J'):
         return wordnet.ADJ
     elif tag.startswith('V'):
@@ -1237,6 +1347,16 @@ def pos_tagger(tag):
 
 
 def normalize_text(input):
+    """
+    normalize_text function description:
+    Normalizes the input text by removing special characters, lowercasing, normalizing German characters to English equivalents, tokenizing, removing stopwords, and lemmatizing.
+
+    Parameters:
+    - input (str): The input text to be normalized.
+
+    Returns:
+    - str: The normalized text.
+    """
     # Remove special characters and lowercase the content
     content = re.sub(r'[^\w\s]', '', input).lower()
 
