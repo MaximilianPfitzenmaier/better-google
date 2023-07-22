@@ -7,7 +7,6 @@ import time
 if __name__ == '__main__':
     time_start = time.time()
     db = src.database.Database()
-    # db.drop_all_tables()
 
     crawler = src.web_crawler.Crawler(db)
     # crawler.crawl()
@@ -16,9 +15,8 @@ if __name__ == '__main__':
     test_query = input("Query: ")
     query = src.query_handler.Query(test_query, db)
 
-    # returns (doc_id, url, title, description, img, keywords, ranking_score)
-    query.get_search_results(100)
-    print(query.search_results)
+    # returns (doc_id, url, title, description, img, keywords, ranking_score, )
+    print(query.get_search_results(100))
 
     # Calculate the execution time
     time_end = time.time()

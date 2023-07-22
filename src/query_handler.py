@@ -4,6 +4,7 @@ import src.web_crawler
 from nltk.corpus import stopwords
 import math
 from collections import defaultdict
+import os
 
 
 class Query:
@@ -33,9 +34,6 @@ class Query:
     def link_based_ranking(self):
         """
         Creates a ranking based on the in_links of the documents in the index.
-
-        Returns:
-        None
         """
         max_rank = (
             len(max(self.index, key=lambda doc: len(doc[6]))[6])
@@ -48,7 +46,6 @@ class Query:
             (doc[0], doc[1], doc[2], doc[3], doc[4], doc[5], len(doc[6]) / max_rank, doc[7])
             for doc in self.index
         ]
-        self.index.sort(key=lambda doc: doc[6], reverse=True)
 
     def calculate_tf_idf(self):
         """
@@ -93,11 +90,6 @@ class Query:
                 tf_idf_score[word] = tf * idf_scores[word]
             tf_idf_scores.append(tf_idf_score)
         
-        numeric_scores = [x[1] for x in tf_idf_scores]
-        max_value = max(numeric_scores)
-        for entry in tf_idf_scores:
-            entry /= max_value
-
         return tf_idf_scores
 
     def rank_documents(self, tf_idf_scores):
@@ -106,58 +98,28 @@ class Query:
         It sums up the TF-IDF scores for each document and uses the sum as the document score.
 
         Returns:
-        ranked documents
+        rank scores for each document
         """
-        document_ids = [doc[0] for doc in self.index]
-        document_url = [doc[1] for doc in self.index]
-        document_title = [doc[2] for doc in self.index]
-        document_desc = [doc[3] for doc in self.index]
-        document_img = [doc[5] for doc in self.index]
-        document_key = [doc[7] for doc in self.index]
-
-        # Calculate document scores based on TF-IDF scores
         document_scores = []
         for score in tf_idf_scores:
             doc_score = sum(score.values())
             document_scores.append(doc_score)
+        
+        max_value = max(document_scores)
+        if max_value == 0:
+            max_value = 1
+        document_scores = [x / max_value for x in document_scores]
 
-        # Sort documents by score in descending order
-        ranked_documents = sorted(
-            range(len(document_scores)), key=lambda k: document_scores[k], reverse=True
-        )
-
-        # Rank documents
-        final_ranked_documents = [
-            (
-                document_ids[i],
-                document_url[i],
-                document_title[i],
-                document_desc[i],
-                document_img[i],
-                document_key[i],
-                document_scores[i]
-            )
-            for i in ranked_documents
-        ]
-
-        return final_ranked_documents
+        return document_scores
 
     def rank_likelihood(self):
         """
            Rank a collection of documents relative to a query using the query likelihood model
 
            Returns:
-           ranked documents
+           rank scores for each doc in the index
        """
         qwords = nltk.tokenize.word_tokenize(self.prepared_query)
-
-        document_ids = [doc[0] for doc in self.index]
-        document_url = [doc[1] for doc in self.index]
-        document_title = [doc[2] for doc in self.index]
-        document_desc = [doc[3] for doc in self.index]
-        document_img = [doc[5] for doc in self.index]
-        document_key = [doc[7] for doc in self.index]
-
         document_scores = []
 
         for doc in self.index:
@@ -172,97 +134,24 @@ class Query:
 
             document_scores.append(round(score, 10))
         
+        # normalize
         max_value = max(document_scores)
+        if max_value == 0:
+            max_value = 1
         document_scores = [x / max_value for x in document_scores]
 
-        ranked_documents = sorted(
-            range(len(document_scores)), key=lambda k: document_scores[k], reverse=True
-        )
-
-        final_ranked_documents = [
-            (
-                document_ids[i],
-                document_url[i],
-                document_title[i],
-                document_desc[i],
-                document_img[i],
-                document_key[i],
-                document_scores[i],
-            )
-            for i in ranked_documents
-        ]
-
-        return final_ranked_documents
-    
-    def measure_relevance(self, ranking):
-        relevance = 0.0
-
-        for doc in ranking:
-            relevance += doc[6]
-
-        return relevance/len(ranking)
-    
-    def measure_diversity(self, ranking, initial_approach = True):
-        diversity = 0.0
-        terms = []
-        
-        for doc in ranking:
-            doc_div = 0
-            words = doc[4].split(' ')
-            for word in words:
-                if word not in terms:
-                    terms.append(word)
-                    if initial_approach:
-                        doc_div += 1
-                    else:
-                        diversity += 1
-            if initial_approach:
-                diversity += doc_div / len(words)
-
-        return diversity/len(ranking)
-    
-    def diversify(self, ranking, k, l):
-        reranked = []
-        initial_approach = False
-        relevance_total = self.measure_relevance(ranking)
-        diversity_total = self.measure_diversity(ranking)
-
-        # To start, add the single most relevant document to our ranking
-        reranked.append(ranking.pop(0))
-
-        while len(reranked) < k and len(ranking) != 0:
-            # greedily add the single document that maximizes the weighted mix of l * relevance + (1-l) diversity
-            best_doc = (-1, -99999)  
-            for doc in ranking:
-                if initial_approach:
-                    # to get the values for relevance and diversity I measure the existing reranked list together with the new doc as if it were added to the list already and check its relevancy
-                    temp = reranked.copy()
-                    temp.append(doc)
-                    relevance = self.measure_relevance(temp)
-                    diversity = self.measure_diversity(temp)
-                else:
-                    # by comparing the scores with and without the document added to the entire initial list, we can measure the diversity of this doc more precisely
-                    # I combine this with a naive approach in the diversity measurement where I don't average out the new words per doc
-                    # I believe that this will give me a better approximation of how diverse this doc was. In the other approach, averaging over the doc length seems fitting 
-                    # since we only have a few docs in the reranked list, so a new long doc will generally be given an advantage which isn't as much about diversity as it is about length
-                    temp = reranked.copy().__add__(ranking)
-                    temp.remove(doc)
-                    relevance = relevance_total - self.measure_relevance(temp)
-                    diversity = diversity_total - self.measure_diversity(temp, initial_approach)
-                score = l * relevance + (1 - l) * diversity
-                if score > best_doc[1]:
-                    best_doc = (doc, score)
-            reranked.append(best_doc[0])
-            ranking.remove(best_doc[0])
-
-        return reranked
+        return document_scores
 
     def get_search_results(self, amount):
         """
-        Gets the top #amount search results from our database
+        Gets the top #amount search results from our database and ranks them based on multiple factors:
+        In-link, tf-idf score and query-likelihood.
 
         Parameters:
         - amount (int): The amount of search results we want to have returned to us.
+
+        Returns:
+        The list of search results
         """
         self.get_index()
 
@@ -270,29 +159,37 @@ class Query:
             self.search_results = []
             return
 
-        # At this point we should apply some relevancy metrics and sort the results by importance
+        # At this point we apply some relevancy metrics and sort the results by importance
         self.link_based_ranking()
-        for doc in self.index:
-            print('ID: ' + str(doc[0]) + '; Url: ' + doc[1] + '; Title: ' + doc[2] + '; Link-score: ' + str(doc[6]))
-
-        tf_idf_scores = self.calculate_tf_idf()
-        ranked_documents = self.rank_documents(tf_idf_scores)
-        for doc in ranked_documents:
-            print('ID: ' + str(doc[0]) + '; Url: ' + doc[1] + '; Title: ' + doc[2] + '; tfidf-score: ' + str(doc[6]))
-
-        likelihood_results = self.rank_likelihood()
-        for doc in likelihood_results:
-            print('ID: ' + str(doc[0]) + '; Url: ' + doc[1] + '; Title: ' + doc[2] + '; query-likelihood-score: ' + str(doc[6]))
+        tf_idf_scores = self.rank_documents(self.calculate_tf_idf())
+        q_likelihood_scores = self.rank_likelihood()
         
-        # combine and add the relevance scores
+        # combine and add the relevance scores with some weights added to each ranking
         self.index = [(doc[0], doc[1], doc[2], doc[3], doc[4], doc[5], 
-                       (doc[6] + 
-                        [temp[6] for temp in ranked_documents if temp[0] == doc[0]][0] +
-                        [temp[6] for temp in likelihood_results if temp[0] == doc[0]][0]) / 3, 
-                       doc[7]) for doc in self.index]
+                       0.2 * doc[6] + # link-based ranking score
+                       0.4 * tf_idf_scores[index] + # tf-idf-based ranking score
+                       0.4 * q_likelihood_scores[index], # query-likelihood ranking score
+                       doc[7]) for index, doc in enumerate(self.index)]
+        self.index.sort(key=lambda doc: doc[6], reverse=True)
         
-        # figure out the ranking by adding diversity
-        self.index = self.diversify(self.index, amount, 0.2)
+        # considering runtime, adding diversity is too expensive for us at this stage
 
-        # For now, I'll just return the results
+        # Set the results
         self.search_results = self.index[:amount]
+
+        # save results to file
+        result_dir = os.path.join(os.getcwd(), 'ResultLists')
+        if not os.path.exists(result_dir):
+            os.makedirs()
+        os.chdir(result_dir)
+        file_id = 0
+        while os.path.exists('search_results_%s' % file_id):
+            file_id += 1
+        with open(f'search_results_{file_id}', 'w') as f:
+            num = 1
+            for result in self.search_results:
+                f.write(str(num) + '    ' + result[1] + '    ' + result[6])
+                num += 1
+        print('Search results saved to file search_results_' + str(file_id))
+
+        return self.search_results
