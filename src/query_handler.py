@@ -55,7 +55,7 @@ class Query:
         if max_rank == 0:
             max_rank = 1
         self.index = [
-            (doc[0], doc[1], doc[2], doc[3], doc[4], doc[5], len(doc[6]) / max_rank, doc[7])
+            (doc[0], doc[1], doc[2], doc[3], doc[4], doc[5], len(doc[6]) / max_rank, doc[7], doc[8])
             for doc in self.index
         ]
 
@@ -182,7 +182,7 @@ class Query:
                        0.2 * doc[6] + # link-based ranking score
                        0.4 * tf_idf_scores[index] + # tf-idf-based ranking score
                        0.4 * q_likelihood_scores[index], # query-likelihood ranking score
-                       doc[7]) for index, doc in enumerate(self.index)]
+                       doc[7], doc[8]) for index, doc in enumerate(self.index)]
         self.index.sort(key=lambda doc: doc[6], reverse=True)
         
         # considering runtime, adding diversity is too expensive for us at this stage
@@ -193,7 +193,7 @@ class Query:
         # save results to file
         result_dir = os.path.join(os.getcwd(), 'ResultLists')
         if not os.path.exists(result_dir):
-            os.makedirs()
+            os.makedirs(result_dir)
         os.chdir(result_dir)
         file_id = 0
         while os.path.exists('search_results_%s' % file_id):
@@ -201,7 +201,7 @@ class Query:
         with open(f'search_results_{file_id}', 'w') as f:
             num = 1
             for result in self.search_results:
-                f.write(str(num) + '    ' + result[1] + '    ' + result[6])
+                f.write(str(num) + '    ' + result[1] + '    ' + str(result[6]) + '\n')
                 num += 1
         print('Search results saved to file search_results_' + str(file_id))
 
