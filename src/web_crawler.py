@@ -13,7 +13,6 @@ from bs4 import BeautifulSoup
 from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import word_tokenize, sent_tokenize
 from nltk.corpus import stopwords, wordnet
-from rake_nltk import Rake
 from datetime import datetime
 import threading
 from translate import Translator as TranslateTranslator
@@ -344,7 +343,6 @@ class Crawler:
         "https://www.zeltwanger.de/",
         "https://xn--yogaloft-tbingen-szb.com/",
         "https://zsl-bw.de/,Lde/Startseite/ueber-das-zsl/regionalstelle-tuebingen/",
-
     ]
 
     # our blacklist
@@ -1143,7 +1141,6 @@ def get_internal_external_links(
                                 # if not has_tuebingen_content(internal_link):
                                 with db_lock:
                                     # frontier push here
-
                                     if depth == 0:
                                         self.db.push_to_frontier(
                                             internal_link)
