@@ -15,135 +15,406 @@ from nltk.tokenize import word_tokenize, sent_tokenize
 from nltk.corpus import stopwords, wordnet
 from datetime import datetime
 import threading
-
+from translate import Translator as TranslateTranslator
+from googletrans import Translator as GoogleTranslator
+# import goslate
 
 # Create a thread-local instance of WordNet and a lock
 wordnet_lock = threading.Lock()
 db_lock = threading.Lock()
+translation_lock = threading.Lock()
 kw_model = keybert.KeyBERT()
-
 # Define a thread subclass for crawling URLs
 
 
 class CrawlThread(threading.Thread):
-    def __init__(self, crawler, url):
-        super().__init__()
-        self.crawler = crawler
-        self.url = url
-
-    def run(self):
-        self.crawler.crawl_url(self.url)
-
-
-class Crawler:
-    initial_frontier = [
-        'https://en.stuttgart.de/',
-        'https://en.wikipedia.org/wiki/Stuttgart',
-        'https://www.stuttgart-tourist.de/en',
-        'https://hoelderlinturm.de/english/',
-        'https://www.tuebingen.de/',
-        'https://www.my-stuwe.de/en/',
-        # # reichen solche datenbanken?
-        'https://uni-tuebingen.de/en/',
-        # 'https://civis.eu/en/about-civis/universities/eberhard-karls-universitat-tubingen',
-        'https://tuebingenresearchcampus.com/en/',
-        # 'https://is.mpg.de/en/',
-        # # noch mehr guides, decken aber gut ab - zumal eh die einzelnen seiten idr nur auf deutsch sind
-        'https://www.tripadvisor.com/Attractions-g198539-Activities-Tubingen_Baden_Wurttemberg.html',
-        'https://www.medizin.uni-tuebingen.de/en-de/',
-        'https://apps.allianzworldwidecare.com/poi/hospital-doctor-and-health-practitioner-finder?PROVTYPE=PRACTITIONERS&TRANS=Doctors%20and%20Health%20Practitioners%20in%20Tuebingen,%20Germany&CON=Europe&COUNTRY=Germany&CITY=Tuebingen&choice=en',
-        'https://www.yelp.com/search?cflt=physicians&find_loc=T%C3%BCbingen%2C+Baden-W%C3%BCrttemberg%2C+Germany',
-        'https://cyber-valley.de/',
-        'https://www.tuebingen.mpg.de/84547/cyber-valley',
-        'https://tuebingen.ai/',
-        'https://www.bahnhof.de/en/tuebingen-hbf',
-        'https://en.wikipedia.org/wiki/T%C3%BCbingen',
-        'https://www.eml-unitue.de/',
-        'https://wikitravel.org/en/T%C3%BCbingen',
-        # # politics
-        # # geograpy
-        'https://www.engelvoelkers.com/en-de/properties/rent-apartment/baden-wurttemberg/tubingen-kreis/',
-        'https://integreat.app/tuebingen/en/news/tu-news',
-        'https://tunewsinternational.com/category/news-in-english/',  # news
-        # # # reichen solche guides?
-        # # 'https://guide.michelin.com/en/de/baden-wurttemberg/tbingen/restaurants',
-        # 'https://uni-tuebingen.deen/',
-        'https://uni-tuebingen.de/en/facilities/central-institutions/university-sports-center/home/',
-        # 'https://is.mpg.de/en/publications?',
-    ]
-    # our blacklist
-    blacklist = [
-        'https://www.tripadvisor.com/',
-        'https://www.yelp.com/',
-    ]
-
-    db = None
-
-    def __init__(self, db) -> None:
-        self.db = db
-        self.user_agent = 'TuebingenExplorer/1.0'
-        # nltk.download('punkt')
-        # nltk.download('wordnet')
-        # nltk.download('stopwords')
-        # nltk.download('averaged_perceptron_tagger')
-        self.min_depth_limit = 0
-        self.max_depth_limit = 2
-        self.max_threads = 1
-        self.base_crawl_delay = 2.0
-        # self.wordnet_local = threading.local()
-        # self.wordnet_local.lock = threading.Lock()
-
-        # If the frontier is empty, we load it with our initial frontier
-        if self.db.check_frontier_empty():
-            for link in self.initial_frontier:
-                self.db.push_to_frontier(link)
-
-    # Helper Functions
-    def print_web_page(self, web_page):
-        """
-        Prints all details of the crawled web page.
+    """
+        CrawlThread function description:
+        This class represents a thread that is responsible for crawling a specific URL using the provided crawler.
 
         Parameters:
-        - web_page (disctionary): The web page object.
-
-        Returns:
-        - None.
-        """
-        print(f"ID: {web_page['id']}")
-        print(f"URL: {web_page['url']}")
-        print(f"Title: {web_page['title']}")
-        # print(f"Normalized Title: {web_page['normalized_title']}")
-        # print(f"Keywords: {web_page['keywords']}")
-        # print(f"Description: {web_page['description']}")
-        # print(f"Normalized Description: {web_page['normalized_description']}")
-        # print(f"Internal Links: {web_page['internal_links']}")
-        # print(f"External Links: {web_page['external_links']}")
-        # print(f"In Links: {web_page['in_links']}")
-        # print(f"Out Links: {web_page['out_links']}")
-        # print(f"Content: {web_page['content']}")
-        # print(f"Image URL: {web_page['img']}")
-
-        print("--------------------")
-
-    def add_internal_links_to_frontier(self, url, internal_links):
-        """
-        Adds all the internal links to the frontier array.
-        Parameters:
-        - url (BeautifulSoup): The BeautifulSoup url.
-        - internal_links (list):  A list of visited internal URLs
+        - crawler: An instance of the Crawler class.
+        - url: The URL to be crawled.
 
         Returns:
         - None
         """
 
-        for link in internal_links:
-            if link.startswith("/") or link.startswith(url):
-                if link.startswith("/"):
-                    link = urljoin(url, link)
-                self.frontier.append(link)
+    def __init__(self, crawler, url):
+        """
+        __init__ function description:
+        Initializes a CrawlThread instance.
+
+        Parameters:
+        - crawler: An instance of the Crawler class.
+        - url: The URL to be crawled.
+
+        Returns:
+        - None
+        """
+        super().__init__()
+        self.crawler = crawler
+        self.url = url
+
+    def run(self):
+        """
+        run function description:
+        Executes the crawling process for the provided URL using the associated Crawler.
+
+        Parameters:
+        - None
+
+        Returns:
+        - None
+        """
+
+        self.crawler.crawl_url(self.url)
+
+
+class Crawler:
+
+    initial_frontier = [
+        "https://dailyperfectmoment.blogspot.com/2014/03/friday-food-favourite-places-cafe.html",
+        "https://www.ssc-tuebingen.de/",
+        "https://www.tageselternverein.de/",
+        "https://www.wila-tuebingen.de/",
+        "https://1map.com/maps/germany/tuebingen-38719/",
+        "https://allevents.in/tubingen/food-drinks/",
+        "https://aris-kommt.de/",
+        "https://bestplacesnthings.com/places-to-visit-tubingen-baden-wurttemberg-germany/",
+        "https://bolt.eu/de-de/cities/tubingen/",
+        "https://bueroaktiv-tuebingen.de/initiativen/praesentierensich/foodsharing-tuebingen/",
+        "https://civis.eu/de/activities/civis-openlab/civis-open-lab-tubingen/",
+        "https://civis.eu/en/about-civis/universities/eberhard-karls-universitat-tubingen/",
+        "https://crepes-tuebingen.de/",
+        "https://cyber-valley.de/",
+        "https://edeka-schoeck.de/filiale-tuebingen-berliner-ring/",
+        "https://elsa-tuebingen.de/",
+        "https://feinschmeckerle.de/2018/05/12/food-rebellen-stilwild-tuebingen/",
+        "https://finanzamt-bw.fv-bwl.de/fa_tuebingen/",
+        "https://firmeneintrag.creditreform.de/72072/7270059882/HORST_WIZEMANN_FIRE_FOOD_AND_ENTERTAINMENT/",
+        "https://food-festivals.com/suche/TÃ¼bingen/",
+        "https://foodwissen.de/kuechenstudio-tuebingen/",
+        "https://fragdenstaat.de/anfrage/kontrollbericht-zu-asien-food-bazar-tubingen/",
+        "https://freistil.beer/category/food-rebellen/",
+        "https://geburtshaus-tuebingen.de/",
+        "https://genussart.club/food/",
+        "https://gym-tue.seminare-bw.de/,Lde/Startseite/Bereiche+_+Faecher/Sport/",
+        "https://hc-tuebingen.de/",
+        "https://historicgermany.travel/historic-germany/tubingen/",
+        "https://hoelderlinturm.de/",
+        "https://jgr-tuebingen.de/",
+        "https://jobcenter-tuebingen.de/",
+        "https://justinpluslauren.com/things-to-do-in-tubingen-germany/",
+        "https://karriere-im-sportmanagement.de/hochschulen/universitaet-tuebingen/",
+        "https://katholisch-tue.de/",
+        "https://kreisbau.com/",
+        "https://kunsthalle-tuebingen.de/",
+        "https://lebensphasenhaus.de/",
+        "https://llpa.kultus-bw.de/,Lde/beim+Regierungspraesidium+Tuebingen/",
+        "https://lous-foodtruck.de/foodtruck-tuebingen-2/",
+        "https://mapet.de/",
+        "https://meine-kunsthandwerker-termine.de/de/veranstaltung/street-food-festival-tuebingen_23109852/",
+        "https://mezeakademie.com/",
+        "https://mph.tuebingen.mpg.de/",
+        "https://mrw-tuebingen.de/",
+        "https://nachbarskind.de/",
+        "https://naturfreunde-tuebingen.de/",
+        "https://netzwerk-onkoaktiv.de/institut/universitaetsklinikum-abteilung-sportmedizin-der-universitaetsklinik-tuebingen/",
+        "https://nikolauslauf-tuebingen.de/start/",
+        "https://onlinestreet.de/271761-sportkreis-tuebingen-e-v-/",
+        "https://ov-tuebingen.thw.de/",
+        "https://rds-tue.ibs-bw.de/opac/",
+        "https://rp.baden-wuerttemberg.de/rpt/abt7/fachberater/seiten/sport/",
+        "https://samphat-thai.de/",
+        "https://solawi-tuebingen.de/",
+        "https://sport-nachgedacht.de/videobeitrag/ifs-der-uni-tuebingen/",
+        "https://sportraepple-shop.de/sportwissenschaft-tuebingen/",
+        "https://sports-nut.de/",
+        "https://staatsanwaltschaft-tuebingen.justiz-bw.de/pb/,Lde/Startseite/",
+        "https://studiengaenge.zeit.de/studium/gesellschaftswissenschaften/sport/sport/standorte/baden-wuerttemberg/tuebingen/",
+        "https://studieren.de/sport-lehramt-uni-tuebingen.studiengang.t-0.a-68.c-408.html",
+        "https://sv03-tuebingen.de/",
+        "https://taz.de/Verpackungssteuer-in-Tuebingen/!5936857/",
+        "https://theculturetrip.com/europe/germany/articles/the-best-things-to-see-and-do-in-tubingen-germany/",
+        "https://tigers-tuebingen.de/",
+        "https://tue.schulamt-bw.de/Startseite/",
+        "https://tuebilicious.mewi-projekte.de/2021/06/06/supportyourlocals/",
+        "https://tuebingen.ai/",
+        "https://tuebingen.city-map.de/01100001/ofterdingen-steinlachtal/online-shops/food/",
+        "https://tuebingen.dlrg.de/",
+        "https://tuebingen.wlv-sport.de/home/",
+        "https://tuebingenresearchcampus.com/",
+        "https://tunewsinternational.com/2021/07/08/diesen-samstag-spas-sport-am-samstag-in-tubingen/",
+        "https://tv-rottenburg.de/sportangebote/leichtathletik/details-leichtathletik/news/leichtathletik-5-kindersportfest-in-tuebingen/",
+        "https://tvstaufia.de/artikel/sport-und-kulturevent-in-tuebingen/",
+        "https://unser-tuebingen.de/veranstaltung/street-food-festival-tuebingen-2023/",
+        "https://uro-tuebingen.de/",
+        "https://wanderlog.com/list/geoCategory/199488/where-to-eat-best-restaurants-in-tubingen/",
+        "https://wilhelmsstift.de/",
+        "https://www.abfall-kreis-tuebingen.de/",
+        "https://www.agentur-fuer-klimaschutz.de/",
+        "https://www.altenhilfe-tuebingen.de/",
+        "https://www.antenne1.de/",
+        "https://www.antiquitaeten-tuebingen.de/",
+        "https://www.arbeitsagentur.de/vor-ort/reutlingen/tuebingen/",
+        "https://www.atlasobscura.com/things-to-do/tubingen-germany/",
+        "https://www.baeckerei-gehr.de/",
+        "https://www.bahnhof.de/en/tuebingen-hbf/",
+        "https://www.bayer-kastner.de/",
+        "https://www.bg-kliniken.de/klinik-tuebingen/",
+        "https://www.biwakschachtel-tuebingen.de/",
+        "https://www.blutspendezentrale.de/",
+        "https://www.bongoroots.de/",
+        "https://www.booking.com/attractions/city/de/tubingen.de.html",
+        "https://www.boxenstop-tuebingen.de/",
+        "https://www.brillinger.de/",
+        "https://www.burgermeister-cafegino.de/",
+        "https://www.bwegt.de/land-und-leute/das-land-erleben/veranstaltungen/detail/streetfood-festival-tuebingen/schummeltag-street-food-festival/37abfd6f-5ba4-407e-8274-e06f99b4cdc7/",
+        "https://www.bwva.de/",
+        "https://www.cegat.de/",
+        "https://www.cht.com/",
+        "https://www.cloudno7.de/en/frontpage/",
+        "https://www.curevac.com/",
+        "https://www.cvjm-tuebingen.de/",
+        "https://www.dai-tuebingen.de/",
+        "https://www.dav-tuebingen.de/",
+        "https://www.demografie-portal.de/DE/Politik/Baden-Wuerttemberg/Sport/interview-christine-vollmer-tuebingen.html",
+        "https://www.dentalbauer.de/",
+        "https://www.die-food-trucks.de/nach-stadt/tubingen/",
+        "https://www.diegutelaune.de/",
+        "https://www.discovergermany.com/university-town-tubingen/",
+        "https://www.dr-droescher.de/",
+        "https://www.drk-tuebingen.de/",
+        "https://www.dzif.de/de/standorte/tuebingen/",
+        "https://www.easy-sports.com/",
+        "https://www.eml-unitue.de/",
+        "https://www.esg-tuebingen.de/",
+        "https://www.europeanbestdestinations.com/destinations/tubingen/",
+        "https://www.evangelische-gesamtkirchengemeinde-tuebingen.de/",
+        "https://www.eventbrite.com/d/germany--t%C3%BCbingen/events--today/",
+        "https://www.evstift.de/",
+        "https://www.expedia.co.uk/Things-To-Do-In-Tuebingen.d181220.Travel-Guide-Activities/",
+        "https://www.faros-tuebingen.com/",
+        "https://www.faz.net/aktuell/feuilleton/thema/tuebingen/",
+        "https://www.feuerwehr-tuebingen.de/",
+        "https://www.fliesen-kemmler.de/",
+        "https://www.foodtruck-mieten24.de/food-truck-mieten-in-tuebingen/",
+        "https://www.gastroguide.de/city/tuebingen/schnell-mal-was-essen/",
+        "https://www.gea.de/",
+        "https://www.germanfoodblogs.de/interviews/2019/6/12/jan-aus-tbingen-esszettel/",
+        "https://www.germansights.com/tubingen/",
+        "https://www.geschichtswerkstatt-tuebingen.de/",
+        "https://www.gesundheit-studieren.com/",
+        "https://www.gruene-tuebingen.de/home/",
+        "https://www.gss-tuebingen.de/",
+        "https://www.gwg-tuebingen.de/",
+        "https://www.haertha.de/",
+        "https://www.hgv-tuebingen.de/",
+        "https://www.hih-tuebingen.de/",
+        "https://www.hochschulregion.de/",
+        "https://www.hornbach.de/mein-markt/baumarkt-hornbach-tuebingen/",
+        "https://www.hospiz-tuebingen.de/",
+        "https://www.hubnspoke.de/",
+        "https://www.ibyteburgers.com/",
+        "https://www.ibyteburgers.com/standorte-kalender/",
+        "https://www.immatics.com/",
+        "https://www.infosperber.ch/wirtschaft/uebriges-wirtschaft/tuebingen-mcdonalds-muss-nun-doch-einweg-steuer-zahlen/",
+        "https://www.institutfrancais.de/",
+        "https://www.intersport.de/haendlersuche/sportgeschaefte-baden-wuerttemberg/72072-tuebingen-intersport-raepple/",
+        "https://www.itdesign.de/",
+        "https://www.jacques.de/depot/44/tuebingen/",
+        "https://www.japengo.eu/",
+        "https://www.karg-und-petersen.de/",
+        "https://www.kaufda.de/Filialen/Tuebingen/Fast-Food/v-c24/",
+        "https://www.keb-tuebingen.de/",
+        "https://www.keeptravel.com/germany/attraction/ozero-anlagen/",
+        "https://www.kern-medical.com/",
+        "https://www.kirchenmusikhochschule.de/",
+        "https://www.kohenoor-tuebingen.de/",
+        "https://www.kreis-tuebingen.de/Startseite.html",
+        "https://www.ksk-tuebingen.de/",
+        "https://www.kulturnetz-tuebingen.de/",
+        "https://www.kupferblau.de/2020/12/18/die-besten-take-away-geheimtipps-in-tuebingen/",
+        "https://www.landestheater-tuebingen.de/",
+        "https://www.lebenshilfe-tuebingen.de/",
+        "https://www.littleindia-tuebingen.de/",
+        "https://www.lpb-tuebingen.de/",
+        "https://www.mcshape.com/",
+        "https://www.medizin.uni-tuebingen.de/",
+        "https://www.medsports.de/",
+        "https://www.mehrrettich.de/",
+        "https://www.mein-check-in.de/tuebingen/overview/",
+        "https://www.meinprospekt.de/tuebingen/filialen/fast-food/",
+        "https://www.meteoblue.com/de/wetter/woche/TÃ¼bingen_deutschland_2820860/",
+        "https://www.mey-generalbau-triathlon.com/",
+        "https://www.mhp-pflege.de/",
+        "https://www.minube.net/what-to-see/germany/baden-wurttemberg/tubingen/",
+        "https://www.miomente.de/stuttgart/kulinarische-stadtfuehrung-tuebingen-meet-und-eat-tuebingen/",
+        "https://www.mode-zinser.de/",
+        "https://www.museumsgesellschaft-tuebingen.de/",
+        "https://www.my-stuwe.de/",
+        "https://www.mygermanyvacation.com/best-things-to-do-and-see-in-tubingen-germany/",
+        "https://www.nabu-tuebingen.de/",
+        "https://www.nc-werte.info/hochschule/uni-tuebingen/sport-sportpublizistik/",
+        "https://www.ndr.de/sport/Sieg-gegen-Tuebingen-Rostock-Seawolves-auf-Titelkurs,seawolves886.html",
+        "https://www.neckarcamping.de/",
+        "https://www.neue-verpackung.de/food/verwaltungsgerichtshof-kippt-verpackungssteuer-in-tuebingen-225.html",
+        "https://www.northdata.de/TS+Food+GmbH,+TÃ¼bingen/Amtsgericht+Stuttgart+HRB+748766/",
+        "https://www.nuna-store.com/",
+        "https://www.nusser-schaal.de/",
+        "https://www.occ-tuebingen.de/",
+        "https://www.outdooractive.com/en/places-to-see/tuebingen/landscape-in-tuebingen/21876965/",
+        "https://www.ovesco.com/",
+        "https://www.pagina.gmbh/",
+        "https://www.phorn.de/",
+        "https://www.pinterest.com/pin/424956914818546372/",
+        "https://www.post-sv-tuebingen.de/",
+        "https://www.praeventionssport-tuebingen.de/",
+        "https://www.profamilia.de/angebote-vor-ort/baden-wuerttemberg/tuebingen/",
+        "https://www.raktuebingen.de/",
+        "https://www.reddit.com/r/Tuebingen/comments/12ghnvz/best_place_to_grab_food_to_go/",
+        "https://www.reservix.de/sport-in-tuebingen/",
+        "https://www.rrsct.de/",
+        "https://www.rsg-tuebingen.de/",
+        "https://www.rskv-tuebingen.de/",
+        "https://www.sam-regional.de/de/magazinbeitraege-gastronomie/1/140/slow-food/",
+        "https://www.schmaelzle.de/",
+        "https://www.shs-capital.eu/",
+        "https://www.sit-sis.de/",
+        "https://www.slowfood.de/netzwerk/vor-ort/tuebingen/",
+        "https://www.sluurpy.de/",
+        "https://www.sozialforum-tuebingen.de/",
+        "https://www.speicher-tuebingen.de/",
+        "https://www.spiegel.de/wirtschaft/service/tuebingen-plant-steuer-auf-fast-food-verpackungen-a-834b811e-1a28-4f4f-b8c3-ec4dd20659e2/",
+        "https://www.sport-studieren.de/hochschulen/universitaet-tuebingen/",
+        "https://www.sport2000.de/stores/tuebingen/",
+        "https://www.sportfechter.de/",
+        "https://www.sportkreis-tuebingen.de/",
+        "https://www.sportwelten.de/TSG-TUeBINGEN_1/",
+        "https://www.srg-tuebingen.de/",
+        "https://www.stadtseniorenrat-tuebingen.de/",
+        "https://www.stern.de/politik/deutschland/themen/tuebingen-4161038.html",
+        "https://www.stiftskirche-tuebingen.de/",
+        "https://www.storymaker.de/",
+        "https://www.streetquizine.de/",
+        "https://www.studieren-studium.com/studium/studieren/Sport-TÃ¼bingen/",
+        "https://www.studis-online.de/studium/sport-sportwissenschaften/uni-tuebingen-23883/",
+        "https://www.stura-tuebingen.de/",
+        "https://www.sudhaus-tuebingen.de/",
+        "https://www.sueddeutsche.de/thema/TÃ¼bingen/",
+        "https://www.suedweststrom.de/",
+        "https://www.superfoodz-store.com/",
+        "https://www.swtue.de/",
+        "https://www.tagblatt.de/",
+        "https://www.tagesschau.de/inland/tuebingen-verpackungssteuer-100.html",
+        "https://www.team-training.de/",
+        "https://www.teamplan.de/",
+        "https://www.thehotelguru.com/en-eu/best-hotels-in/germany/tubingen/",
+        "https://www.tierschutzverein-tuebingen.de/",
+        "https://www.tif-tuebingen.de/",
+        "https://www.tourism-bw.com/attractions/museum-der-universitaet-tuebingen-mut-alte-kulturen-52732dcb08/",
+        "https://www.travelocity.com/Things-To-Do-In-Tuebingen.d181220.Travel-Guide-Activities/",
+        "https://www.trip.com/travel-guide/tubingen-44519/tourist-attractions/",
+        "https://www.tropenklinik.de/",
+        "https://www.tsg-tuebingen.de/",
+        "https://www.tsv-lustnau.de/",
+        "https://www.ttc-tuebingen.de/",
+        "https://www.tue-kiss.de/",
+        "https://www.tuebingen-info.de/",
+        "https://www.tuebingen.de/",
+        "https://www.tuebinger-erbe-lauf.de/",
+        "https://www.tuemarkt.de/",
+        "https://www.tvderendingen.de/",
+        "https://www.udo-tuebingen.de/",
+        "https://www.ukt-physio.de/spezielle-therapie/sportphysiotherapie/",
+        "https://www.uni-tuebingen.de/",
+        "https://www.unterwegsunddaheim.de/2022/08/tuebingen-sehenswuerdigkeiten-in-der-universitaetsstadt-am-neckar/#:~:text=TÃ¼bingen%20ist%20eine%20der,h%C3%BCbsche%20Altstadt%20direkt%20am%20Neckarufer./",
+        "https://www.verifort-capital.de/",
+        "https://www.vermoegenundbau-bw.de/ueber-uns/standorte/amt-tuebingen/",
+        "https://www.vhs-tuebingen.de/kurse/gesundheit/kategorie/Essen+und+Trinken/288/",
+        "https://www.viamichelin.com/web/Tourist-Attractions/Tourist-Attractions-Tubingen-72070-Baden_Wurttemberg-Germany/",
+        "https://www.wayfaringwithwagner.com/visiting-tuebingen-in-wintertime/",
+        "https://www.we-celebrate.de/foodtruck-tuebingen/",
+        "https://www.wotif.com/Things-To-Do-In-Tuebingen.d181220.Travel-Guide-Activities/",
+        "https://www.wurstkueche.com/en/frontpage-2/",
+        "https://www.zar.de/",
+        "https://www.zdf.de/politik/laenderspiegel/unterwegs-in-tuebingen-100.html",
+        "https://www.zeltwanger.de/",
+        "https://xn--yogaloft-tbingen-szb.com/",
+        "https://zsl-bw.de/,Lde/Startseite/ueber-das-zsl/regionalstelle-tuebingen/",
+    ]
+
+    # our blacklist
+    blacklist = [
+        'https://www.tripadvisor.com/',
+        'https://www.yelp.com/',
+        'https://airtable.com/',
+        'https://reddit.com/',
+        'https://api.whatsapp.com/',
+        'https://twitter.com/',
+        'https://www.linkedin.com/',
+        'https://apps.apple.com/',
+        'https://play.google.com/',
+        'https://careers.twitter.com/',
+        'https://facebook.com/',
+        'https://maps.google.com/',
+        'https://create.twitter.com/',
+        'https://is.mpg.de',
+        'https://www.expedia.co.uk',
+        'https://www.reservix.de/',
+        'https://www.travelocity.com',
+        'https://www.wotif.com/',
+
+    ]
+
+    db = None
+
+    def __init__(self, db) -> None:
+        """
+        __init__ function description:
+        Initializes an instance of the Crawler class.
+
+        Parameters:
+        - db: The database instance used to store crawled data.
+
+        Returns:
+        - None
+        """
+
+        self.db = db
+        self.user_agent = 'TuebingenExplorer/1.0'
+        nltk.download('punkt')
+        nltk.download('wordnet')
+        nltk.download('stopwords')
+        nltk.download('averaged_perceptron_tagger')
+        self.min_depth_limit = 0
+        self.max_depth_limit = 2
+        self.max_threads = 12
+        self.base_crawl_delay = 2.0
+        self.frontier = 2
+
+        # If the frontier is empty, we load it with our initial frontier
+        if self.frontier == 0:
+            if self.db.check_frontier_empty():
+                for link in self.initial_frontier:
+                    self.db.push_to_frontier(link)
+
+        elif self.frontier == 1:
+            if self.db.check_frontier_empty1():
+                for link in self.initial_frontier:
+                    self.db.push_to_frontier1(link)
+
+        elif self.frontier == 2:
+            if self.db.check_frontier_empty2():
+                for link in self.initial_frontier:
+                    self.db.push_to_frontier2(link)
+
+    # Helper Functions
 
     def crawl_url(self, url):
         """
+        crawl_url function description:
         Crawls a web page and extracts relevant information.
 
         Parameters:
@@ -160,17 +431,21 @@ class Crawler:
         # Code to measure the execution time
         if urljoin(url, '/') not in self.blacklist:
             # Make an HTTP GET request to the URL
-            response = requests.get(url)
-            parsed_url = urlparse(url)
-            host = parsed_url.netloc
-            full_host = (
-                f"{parsed_url.scheme}://{host}"
-                if f"{parsed_url.scheme}://{host}".endswith('/')
-                else f"{parsed_url.scheme}://{host}/"
-            )
+            try:
+                response = requests.get(url)
+                parsed_url = urlparse(url)
+                host = parsed_url.netloc
+                full_host = (
+                    f"{parsed_url.scheme}://{host}"
+                    if f"{parsed_url.scheme}://{host}".endswith('/')
+                    else f"{parsed_url.scheme}://{host}/"
+                )
+            except:
+                print(f"No request possible {url}")
+                return  # Exit the function
 
             if full_host.endswith('.html/'):
-                full_host = full_host[:-1] 
+                full_host = full_host[:-1]
 
             # Check if the request is successful (status code 200)
             if response.status_code == 200:
@@ -182,15 +457,12 @@ class Crawler:
                 crawl_delay = (
                     allowed_delay[1] if allowed_delay[1] else self.base_crawl_delay
                 )
-
                 if allowed:
                     # Use BeautifulSoup to parse the HTML content
                     soup = BeautifulSoup(response.content, 'html.parser')
 
-                    # only crawl the page content, if the content is english
-                    # if is_page_language_english(soup, url):
                     # get the sitemap for the host from the sitemap table
-                    domain_internal_links = get_sitemap_from_host(self, full_host)
+                    sitemap = get_sitemap_from_host(self, full_host)
                     domain_external_links = []
 
                     try:
@@ -199,7 +471,7 @@ class Crawler:
 
                         links = get_internal_external_links(
                             soup,
-                            domain_internal_links,
+                            sitemap,
                             domain_external_links,
                             full_host,
                             url,
@@ -208,16 +480,18 @@ class Crawler:
 
                         internal_links = links[0]
                         external_links = links[1]
-                        domain_internal_links = links[2]
+                        sitemap = links[2]
                         domain_external_links = links[3]
                     except Exception as e:
-                        print(f"Exception occurred while intern extern : {url} | {e}")
+                        print(
+                            f"Exception occurred while intern extern : {url} | {e}")
 
-                    set_sitemap_to_host(self, full_host, domain_internal_links)
+                    set_sitemap_to_host(self, full_host, sitemap)
 
-                    print(f"url: {url}")
+                    add_external_link_to_sitemap(self, domain_external_links)
+
                     if not has_tuebingen_content(url):
-                        print("Not a Tübingen page: exiting")
+                        print(f"Not a Tübingen page: exiting {url}")
                         return  # Exit the function
 
                     index = None
@@ -229,25 +503,32 @@ class Crawler:
 
                     description = ""
                     description = get_description(soup)
+
                     normalized_description = ""
                     normalized_description = (
                         normalize_text(description) if description else None
                     )
 
                     content = get_page_content(soup)
+                    normalized_content = normalize_text(
+                        content) if content else None
+                    limited_content = ""
+                    limited_content = limit_string_to_50_words(
+                        content)
 
                     try:
                         keywords = get_keywords(
-                            content, normalized_title, normalized_description
+                            normalized_content, normalized_title, normalized_description
                         )
                     except Exception as e:
-                        print(f"Exception occurred while keywords: {url} | {e}")
+                        print(
+                            f"Exception occurred while keywords: {url} | {e}")
 
                     in_links = []
 
                     out_links = []
 
-                    img = str(get_image_url(soup, url))
+                    img = list(get_image_url(soup, url))
 
                     # Create the web page object
                     web_page = create_web_page_object(
@@ -263,7 +544,8 @@ class Crawler:
                         external_links,
                         in_links,
                         out_links,
-                        content,
+                        limited_content,
+                        normalized_content,
                         img,
                     )
 
@@ -274,7 +556,6 @@ class Crawler:
                             # If the document is in the db already, we get None back
                             web_page['id'] = None if entry is None else entry[0]
                         except Exception as e:
-                            self.print_web_page(web_page)
                             print(
                                 f"Exception occurred while adding document: {url} | {e}\n"
                             )
@@ -297,21 +578,44 @@ class Crawler:
                 else:
                     print(f"Error crawling: {url} | Allowed: {allowed} ")
             else:
-                print(f"Error crawling: {url} | Status: {response.status_code}")
+                print(
+                    f"Error crawling: {url} | Status: {response.status_code}")
         else:
             print(f"Domain blacklisted: {urljoin(url, '/')}")
 
     #  Start crawling all URLs in the frontier
     def crawl(self):
-        threads = []
+        """
+        crawl function description:
+        Initiates the crawling process.
 
+        Parameters:
+        - None
+
+        Returns:
+        - None
+        """
+        threads = []
         while True:
             with db_lock:
-                next_urls = self.db.get_from_frontier(self.max_threads)
+                if self.frontier == 0:
+                    next_urls = self.db.get_from_frontier(self.max_threads)
+                if self.frontier == 1:
+                    next_urls = self.db.get_from_frontier1(self.max_threads)
+                if self.frontier == 2:
+                    next_urls = self.db.get_from_frontier2(self.max_threads)
                 if next_urls is None:
                     break
 
             for url in next_urls:
+                if self.frontier == 0:
+                    self.db.remove_from_frontier(url)
+
+                if self.frontier == 1:
+                    self.db.remove_from_frontier1(url)
+
+                if self.frontier == 2:
+                    self.db.remove_from_frontier2(url)
                 thread = CrawlThread(self, url)
                 thread.start()
                 threads.append(thread)
@@ -320,20 +624,50 @@ class Crawler:
             for thread in threads:
                 thread.join()
 
-            with db_lock:
-                for thread in threads:
-                    self.db.remove_from_frontier(thread.url)
-                    threads.remove(thread)
+            for thread in threads:
+                threads.remove(thread)
 
     def create_inout_links(self):
         """
-        Populates the in_links and out_links fields in our database.
+        create_inout_links function description:
+        Populates the in_links and out_links fields in the database.
+
+        Parameters:
+        - None
+
+        Returns:
+        - None
         """
         self.db.create_inoutlinks()
 
 
+def limit_string_to_50_words(input_string):
+    """
+    limit_string_to_50_words function description:
+    Limits the input string to contain only the first 50 words.
+
+    Parameters:
+    - input_string (str): The input string to be limited.
+
+    Returns:
+    - str: The limited string containing the first 50 words.
+    """
+
+    # Split the input string into words
+    words = input_string.split()
+
+    # Take the first 50 words
+    limited_words = words[:50]
+
+    # Join the words back into a new string
+    limited_string = " ".join(limited_words)
+
+    return limited_string
+
+
 def get_sitemap_from_host(self, domain):
     """
+    get_sitemap_from_host function description:
     Gets the sitemap from the given domain.
 
     Parameters:
@@ -342,6 +676,7 @@ def get_sitemap_from_host(self, domain):
     Returns:
     - list: The sitemap list of the domain, or an empty list if the host is not found.
     """
+
     with db_lock:
         try:
             sitemap = list(self.db.get_sitemap_from_domain(domain))
@@ -353,15 +688,17 @@ def get_sitemap_from_host(self, domain):
 
 def set_sitemap_to_host(self, domain, array_to_set):
     """
-    Gets the sitemap from the given domain.
+    set_sitemap_to_host function description:
+    Sets the sitemap for the given domain in the database.
 
     Parameters:
-    - domain
-    - self
+    - domain (string): The domain to update the sitemap for.
+    - array_to_set (list): The sitemap list to set for the domain.
 
     Returns:
-    - list: the sitemap list of the domain.
+    - None
     """
+
     with db_lock:
         try:
             # update the domain_internal_links
@@ -369,6 +706,59 @@ def set_sitemap_to_host(self, domain, array_to_set):
 
         except Exception as e:
             print(f"Exception occurred while setting sitemap: {domain} | {e}")
+
+
+def add_external_link_to_sitemap(self, domain_external_links):
+    """
+    add_external_link_to_sitemap function description:
+    Adds the external links to the sitemap of their respective domains in the database.
+
+    Parameters:
+    - domain_external_links (list): A list of external links to be added to the sitemap.
+
+    Returns:
+    - None
+    """
+    # add the external links to the sitemap
+    for external in domain_external_links:
+
+        # get domain
+        domain = urljoin(external, '/')
+        domain = make_pretty_url(domain)
+
+        # prepare link
+        external = make_pretty_url(external)
+
+        # call database functions
+        # get sitemap
+        sitemap = get_sitemap_from_host(self, domain)
+
+        # add this link to the sitemap
+        if external not in sitemap:
+            sitemap.append(external)
+            # write back sitemap
+            set_sitemap_to_host(self, domain, sitemap)
+
+
+def make_pretty_url(link):
+    """
+    make_pretty_url function description:
+    Formats the input URL to have a consistent and pretty representation.
+
+    Parameters:
+    - link (str): The input URL to be formatted.
+
+    Returns:
+    - str: The formatted URL.
+    """
+    # prepare link
+    if not link.endswith(".html") and not link.endswith(".aspx") and not link.endswith('.pdf'):
+        link = (
+            link
+            if link.endswith("/")
+            else link + "/"
+        )
+    return link
 
 
 def normalize_german_chars(text):
@@ -395,47 +785,26 @@ def normalize_german_chars(text):
     return text
 
 
-def is_page_language_english(soup, url):
+def is_text_english(text):
     """
-    Checks if the language of a web page is English based on the lang attribute of the HTML tag.
+    is_text_english function description:
+    Checks if the provided text is in English.
 
     Parameters:
-    - soup (BeautifulSoup): The BeautifulSoup object representing the parsed HTML content.
+    - text (str): The input text to be checked.
 
     Returns:
-    - bool: True if the language is English, False otherwise.
+    - bool: True if the text is in English, False otherwise.
     """
-    # Convert the BeautifulSoup object to a string
-    soup_str = str(soup)
+    text = str(text)
 
-    # Parse the HTML string using BeautifulSoup again
-    inner_soup = BeautifulSoup(soup_str, 'html.parser')
-
-    # Get the HTML tag
-    html_tag = inner_soup.html
-
-    # Match "/en/" or "=en" in the URL
-    pattern = r"(/en/|=en)"
-
-    # Search for the pattern in the URL
-    match = re.search(pattern, url)
-
-    # Check if the lang attribute is set to 'en'
-    if (
-        html_tag
-        and html_tag.has_attr('lang')
-        and (html_tag['lang'].startswith('en') or html_tag['lang'].startswith('us'))
-    ):
-        return True
-    elif match:
-        return True
-    elif detect(soup.getText()).startswith('en'):
-        return True
-    else:
+    try:
+        language_code = detect(text)
+        return language_code == 'en'
+    except:
         return False
 
 
-# Crawler Functions
 def create_web_page_object(
     id,
     url,
@@ -450,29 +819,32 @@ def create_web_page_object(
     in_links,
     out_links,
     content,
+    normalized_content,
     img,
 ):
     """
-    Creates a web page object.
+    create_web_page_object function description:
+    Creates a dictionary representing a web page object with various attributes.
 
     Parameters:
-    - id (int): The ID of the web page.
-    - index (int | none): The index of the web page.
+    - id (int): The web page ID.
     - url (str): The URL of the web page.
+    - index (None or int): The index of the web page.
     - title (str): The title of the web page.
     - normalized_title (str): The normalized title of the web page.
-    - keywords (list): The keywords generated from the content.
-    - description (str): The description from the description meta tag.
-    - normalized description (str): The normalized description from the description meta tag.
-    - internal_links (list): A list of internal links (URLs within the same domain).
-    - external_links (list): A list of external links (URLs outside the current domain).
-    - in_links (list): An empty list to store incoming links from other pages.
-    - out_links (list): A list of URLs extracted from anchor tags on the page.
-    - content (str): The plain text content of the web page.
-    - img (str): The URL to the thumbnail.
+    - keywords (list): The list of keywords associated with the web page.
+    - description (str): The description of the web page.
+    - normalized_description (str): The normalized description of the web page.
+    - internal_links (list): The list of internal links on the web page.
+    - external_links (list): The list of external links on the web page.
+    - in_links (list): The list of incoming links to the web page.
+    - out_links (list): The list of outgoing links from the web page.
+    - content (str): The content of the web page.
+    - normalized_content (str): The normalized content of the web page.
+    - img (list): The list of image URLs on the web page.
 
     Returns:
-    - dictionary: A dictionary representing the web page object.
+    - dict: A dictionary representing the web page object with various attributes.
     """
 
     return {
@@ -489,6 +861,7 @@ def create_web_page_object(
         'in_links': in_links,
         'out_links': out_links,
         'content': content,
+        'normalized_content': normalized_content,
         'img': img,
     }
 
@@ -527,23 +900,33 @@ def is_crawling_allowed(base_crawl_delay, url, user_agent):
 
 def get_page_title(soup):
     """
-    Extracts the title of a web page from the given BeautifulSoup object.
+    get_page_title function description:
+    Retrieves the page title from the provided BeautifulSoup object.
 
     Parameters:
-    - soup (BeautifulSoup): The BeautifulSoup object representing the parsed HTML content.
+    - soup (BeautifulSoup): The BeautifulSoup object representing the web page content.
 
     Returns:
-    - str or None: The title of the web page if found, otherwise None.
+    - str: The page title if found and in English, otherwise the translated title.
     """
-    return soup.title.string if soup.title else None
+    try:
+        title = soup.title.string if soup.title else None
+
+        if title != None and is_text_english(title):
+            return soup.title.string if soup.title else None
+        else:
+            return translate_to_english(title)
+
+    except:
+        return ''
 
 
-def get_keywords(content, normalized_title, normalized_description):
+def get_keywords(normalized_content, normalized_title, normalized_description):
     """
     Extracts the keywords from the content using the RAKE algorithm.
 
     Parameters:
-    - content (str): The text content to extract keywords from.
+    - normalized_content (str): The normalized_content to extract keywords from.
     - normalized_title (str): The normalized_title to extract keywords from.
     - normalized_description (str): The normalized_description to extract keywords from.
 
@@ -552,8 +935,8 @@ def get_keywords(content, normalized_title, normalized_description):
     """
 
     concat = ""
-    if content is not None:
-        concat += content + " "
+    if normalized_content is not None:
+        concat += normalized_content + " "
     if normalized_title is not None:
         concat += normalized_title
     if normalized_description is not None:
@@ -565,49 +948,90 @@ def get_keywords(content, normalized_title, normalized_description):
     return keywords
 
 
-def get_description(soup):
+def translate_to_english(text):
     """
-    Extracts the description from the description meta tag of a web page from the given BeautifulSoup object.
+    translate_to_english function description:
+    Translates the provided text from German to English.
 
     Parameters:
-    - soup (BeautifulSoup): The BeautifulSoup object representing the parsed HTML content.
+    - text (str): The text to be translated.
 
     Returns:
-    - str or None: The description from the meta tag if found, otherwise None.
+    - str: The translated text in English, or an empty string if translation fails.
     """
-    description = soup.find('meta', attrs={'name': 'description'})
-    return description['content'] if description else None
+    with translation_lock:
+        try:
+            if text is None or not text:
+                return ""
+            else:
+                translator = GoogleTranslator()
+                translation = translator.translate(text, src='de', dest='en')
+                return translation.text
+        except:
+
+            try:
+                text = str(text)
+                translator = TranslateTranslator(from_lang='de', to_lang='en')
+                translation = translator.translate(text)
+                return translation
+            except:
+                return ""
+
+
+def get_description(soup):
+    """
+    get_description function description:
+    Retrieves the description meta tag from the provided BeautifulSoup object.
+
+    Parameters:
+    - soup (BeautifulSoup): The BeautifulSoup object representing the web page content.
+
+    Returns:
+    - str: The content of the description meta tag if found and in English, otherwise the translated content.
+    """
+    try:
+        description = soup.find('meta', attrs={'name': 'description'})
+        if description['content'] != None and is_text_english(description):
+            return description['content']
+        else:
+            return translate_to_english(description['content']) if description['content'] else None
+    except:
+        return ''
 
 
 def has_tuebingen_content(url):
+    """
+    has_tuebingen_content function description:
+    Checks if the provided URL contains content related to Tübingen.
+
+    Parameters:
+    - url (str): The URL to be checked.
+
+    Returns:
+    - bool: True if the URL contains Tübingen-related content, False otherwise.
+    """
     user_agent = 'TuebingenExplorer/1.0'
+    base_crawl_delay = 2.0
     try:
         response = requests.get(url)
 
-        # Check if the request is successful (status code 200)
-        if response.status_code == 200:
+        allowed_delay = is_crawling_allowed(
+            base_crawl_delay, url, user_agent)
+        allowed = allowed_delay[0]
+
+        if allowed:
             is_allowed = is_crawling_allowed(2.0, url, user_agent)
             if is_allowed[0]:
                 # Use BeautifulSoup to parse the HTML content
                 soup = BeautifulSoup(response.content, 'html.parser')
-
-                # if is_page_language_english(soup, url) and (
-                #     'tuebingen' in str(soup)
-                #     or 'Tuebingen' in str(soup)
-                #     or 'tübingen' in str(soup)
-                #     or 'Tübingen' in str(soup)
-                # ):
-
-                if (
-                    'tuebingen' in str(soup)
-                    or 'Tuebingen' in str(soup)
-                    or 'tübingen' in str(soup)
-                    or 'Tübingen' in str(soup)
-                    or 'tubingen' in str(soup)
-                    or 'Tubingen' in str(soup)
-                ):
-                    return True
-
+                words_to_check = ['tuebingen',
+                                  'Tuebingen',
+                                  'tübingen',
+                                  'Tübingen'
+                                  ]
+                for word in words_to_check:
+                    if soup.find(text=lambda text: word in text):
+                        return True
                 else:
                     return False
             else:
@@ -622,21 +1046,22 @@ def get_internal_external_links(
     soup, domain_internal_links, domain_external_links, host, url, self
 ):
     """
-    Extracts the internal and external links from a web page from the given BeautifulSoup object.
+    get_internal_external_links function description:
+    Retrieves internal and external links from the provided BeautifulSoup object and updates the link lists.
 
     Parameters:
-    - soup (BeautifulSoup): The BeautifulSoup object representing the parsed HTML content.
+    - soup (BeautifulSoup): The BeautifulSoup object representing the web page content.
+    - domain_internal_links (list): A list of internal links for the domain.
+    - domain_external_links (list): A list of external links for the domain.
+    - host (str): The host of the web page.
     - url (str): The URL of the web page.
+    - self: The instance of the current class.
 
     Returns:
-    - tuple: A tuple containing two lists:
-        - list: The internal links (URLs within the same domain).
-        - list: The external links (URLs outside the current domain).
+    - tuple: A tuple containing the updated internal and external link lists for the domain.
     """
+    url = make_pretty_url(url)
 
-    if not url.endswith('.html'):
-        url = url if url.endswith("/") else url + "/"
-    
     # get the base url
     base_url = host
     internal_links = []
@@ -649,51 +1074,59 @@ def get_internal_external_links(
             and not href.startswith('tel:')
             and not href.startswith('javascript:')
             and not href.endswith('.jpg')
+            and not href.endswith('.png')
+            and not href.endswith('.gif')
             and not href.endswith('.webp')
+            and not href.endswith('.pdf')
+            and not href.endswith('.xml')
+            and not '@' in href
+            and not '?' in href
         ):
-            # print('---------')
-            # print(domain_internal_links)
+
             if href.startswith('http'):
                 external_link = href
+
+                external_link = external_link if external_link.startswith(
+                    'https') else external_link.replace("http://", "https://")
+
                 #! add "/" if missing
-                if not external_link.endswith(".html") or not external_link.endswith(".aspx"):
-                    external_link = (
-                        external_link
-                        if external_link.endswith("/")
-                        else external_link + "/"
-                    )
+                external_link = make_pretty_url(external_link)
                 # check if we should push the url to the frontier
                 # check if not in blacklist
-                if base_url not in self.blacklist:
-                    # check if depth is fine
-                    depth = calculate_url_depth(external_link)
-                    if depth <= self.max_depth_limit and depth >= self.min_depth_limit:
-                        # check if not in internal array
-                        if base_url + 'en' in external_link:
-                            # check if the page content is english
-                            # if is_page_language_english(soup, external_link):
-                            # check if the content has somthing todo with tuebingen
-                            # if has_tuebingen_content(external_link):
-                            # check if not in sitemap
-                            if external_link not in domain_internal_links:
-                                with db_lock:
-                                    # frontier push here
-                                    # print(
-                                    #     f'add external link to frontier: {external_link}'
-                                    # )
-                                    self.db.push_to_frontier(external_link)
+                # if base_url not in self.blacklist:
+                #     # check if depth is fine
+                #     depth = calculate_url_depth(external_link)
+                #     if depth <= self.max_depth_limit and depth >= self.min_depth_limit:
+                #         # check if not in internal array
+                #         if external_link != url:
 
+                #             # check if not in sitemap
+                #             domain = urljoin(external_link, '/')
+                #             domain = make_pretty_url(domain)
+                #             sitemap_from_this_host = get_sitemap_from_host(
+                #                 self, domain)
+                #             if external_link not in sitemap_from_this_host:
+
+                #                 if external_link not in external_links:
+                #                     with db_lock:
+                #                         # frontier push here
+                #                         # print(
+                #                         #     f'add external link to frontier: {external_link}'
+                #                         # )
+                #                         self.db.push_to_frontier(external_link)
+
+                # add all internal links to web_page_property
                 external_links.append(external_link)
-                #        domain_external_links.append(external_link)
+
+                # Add the URL to the domain sitemap
+                # if not has_tuebingen_content(external_link):
+                domain_external_links.append(external_link)
+
             elif not href.startswith('#') and not '#' in href:
+                href = href if href.startswith('/') else '/' + href
                 internal_link = base_url[:-1] + href
                 #! add "/" if missing
-                if not internal_link.endswith(".html") and not internal_link.endswith(".aspx"):
-                    internal_link = (
-                        internal_link
-                        if internal_link.endswith("/")
-                        else internal_link + "/"
-                    )
+                internal_link = make_pretty_url(internal_link)
 
                 # check if we should push the url to the frontier
                 # check if not in blacklist
@@ -701,35 +1134,23 @@ def get_internal_external_links(
                     # check if depth is fine
                     depth = calculate_url_depth(internal_link)
                     if depth <= self.max_depth_limit and depth >= self.min_depth_limit:
-                        # check if not in internal array
-                        # if base_url + 'en' in internal_link:
-                        # print(f'internal: {internal_link}')
-                        # check if the page content is english
-                        # if is_page_language_english(soup, internal_link):
-                        # check if the content has somthing todo with tuebingen
-                        # if has_tuebingen_content(internal_link):
-
                         # check if the internal link is the same url
                         if internal_link != url:
                             # check if not in sitemap
                             if internal_link not in domain_internal_links:
+                                # if not has_tuebingen_content(internal_link):
                                 with db_lock:
                                     # frontier push here
-                                    # print(
-                                    #     f'add internal link to frontier: {internal_link}'
-                                    # )
-                                    self.db.push_to_frontier(internal_link)
-                            else:
-                                # print(f'already in sitemap {internal_link}')
-                                pass
-                        else:
-                            print(f'me myself and I {internal_link}')
-                    else:
-                        # print(f'max depth {internal_link}')
-                        pass
-                else:
-                    print(f'blacklisted {internal_link}')
+                                    if depth == 0:
+                                        self.db.push_to_frontier(
+                                            internal_link)
 
+                                    elif depth == 1:
+                                        self.db.push_to_frontier1(
+                                            internal_link)
+                                    else:
+                                        self.db.push_to_frontier2(
+                                            internal_link)
                 # add all internal links to web_page_property
                 internal_links.append(internal_link)
 
@@ -803,7 +1224,7 @@ def get_page_content(soup):
     - soup (BeautifulSoup): The BeautifulSoup object representing the parsed HTML content.
 
     Returns:
-    - str: The lemmatized and normalized content of the web page.
+    - str: content of the web page.
     """
     # Get the remaining content
     content = str(soup)
@@ -830,20 +1251,37 @@ def get_page_content(soup):
     # Remove special characters (except "." and "@") and lowercase the content
     content = re.sub(r'[^\w\s.@]', '', content).lower()
 
-    return normalize_text(content)
+    # Split the content into words using spaces as the delimiter
+    word_array = content.split()
+
+    # Remove any leading/trailing whitespaces from each word in the array
+    word_array = [word.strip() for word in word_array]
+
+    # Remove empty strings from the array
+    word_array = list(filter(None, word_array))
+
+    # Join the elements in the array with an empty space in between
+    final_string = " ".join(word_array)
+
+    if final_string and not is_text_english(final_string):
+        final_string = translate_to_english(final_string)
+
+    return final_string
 
 
 def get_image_url(soup, url):
     """
-    Extracts the og:twitter image URL or favicon URL from the given BeautifulSoup object.
+    get_image_url function description:
+    Retrieves the image URL from the provided BeautifulSoup object.
 
     Parameters:
-    - soup (BeautifulSoup): The BeautifulSoup object representing the parsed HTML content.
+    - soup (BeautifulSoup): The BeautifulSoup object representing the web page content.
     - url (str): The URL of the web page.
 
     Returns:
-    - str: The og:image URL if found, otherwise the og:twitter image URL if found, otherwise the favicon URL, or an empty string if both are not found.
+    - list: A list containing the extracted og:image URL and favicon URL.
     """
+
     # Find the og:twitter image tag
     og_image_tag = soup.find("meta", attrs={"property": "og:image"})
 
@@ -853,36 +1291,46 @@ def get_image_url(soup, url):
     # Find the favicon tag
     favicon_tag = soup.find("link", rel="icon")
 
+    # Extract the favicon URL
+    if favicon_tag is not None:
+        favicon_url = favicon_tag.get("href", "")
+        if favicon_url:
+            favicon_url = urljoin(url, '/')[:-1] + favicon_url
+    else:
+        favicon_url = "empty"
+
     # Extract the og:image image URL
     if og_image_tag is not None:
         og_image_url = og_image_tag.get("content", "")
         if og_image_url:
-            return (
-                og_image_url
-                if og_image_url.startswith('http')
-                else 'https:' + og_image_url
-            )
+            og_image_url = og_image_url if og_image_url.startswith(
+                'http') else 'https:' + og_image_url
+
+            return [og_image_url, favicon_url]
 
     # Extract the twitter:image URL
     elif twitter_image_tag is not None:
         og_image_url = twitter_image_tag.get("content", "")
         if og_image_url:
-            return (
-                og_image_url
-                if og_image_url.startswith('http')
-                else urljoin(url, '/')[:-1] + og_image_url
-            )
+            og_image_url = og_image_url if og_image_url.startswith(
+                'http') else urljoin(url, '/')[:-1] + og_image_url
 
-    # Extract the favicon URL
-    elif favicon_tag is not None:
-        favicon_url = favicon_tag.get("href", "")
-        if favicon_url:
-            return urljoin(url, '/')[:-1] + favicon_url
+            return [og_image_url, favicon_url]
 
     return ""
 
 
 def pos_tagger(tag):
+    """
+    pos_tagger function description:
+    Maps the part-of-speech tag to the appropriate WordNet POS tag.
+
+    Parameters:
+    - tag (str): The part-of-speech tag to be mapped.
+
+    Returns:
+    - None or str: The WordNet POS tag corresponding to the input tag, or None if the tag is not recognized.
+    """
     if tag.startswith('J'):
         return wordnet.ADJ
     elif tag.startswith('V'):
@@ -896,6 +1344,16 @@ def pos_tagger(tag):
 
 
 def normalize_text(input):
+    """
+    normalize_text function description:
+    Normalizes the input text by removing special characters, lowercasing, normalizing German characters to English equivalents, tokenizing, removing stopwords, and lemmatizing.
+
+    Parameters:
+    - input (str): The input text to be normalized.
+
+    Returns:
+    - str: The normalized text.
+    """
     # Remove special characters and lowercase the content
     content = re.sub(r'[^\w\s]', '', input).lower()
 
@@ -905,16 +1363,17 @@ def normalize_text(input):
     # Tokenize the content
     tokens = word_tokenize(content)
 
-    # Remove stopwords
-    stopwords_set = set(stopwords.words('english'))
-    filtered_tokens = [token for token in tokens if token not in stopwords_set]
-
-    # Get tags on each word
-    token_pos_tags = nltk.pos_tag(filtered_tokens)
-    wordnet_tag = map(lambda x: (x[0], pos_tagger(x[1])), token_pos_tags)
-    lemmatized_content = []
-
     with wordnet_lock:
+        # Remove stopwords
+        stopwords_set = set(stopwords.words('english'))
+        filtered_tokens = [
+            token for token in tokens if token not in stopwords_set]
+
+        # Get tags on each word
+        token_pos_tags = nltk.pos_tag(filtered_tokens)
+        wordnet_tag = map(lambda x: (x[0], pos_tagger(x[1])), token_pos_tags)
+        lemmatized_content = []
+
         # Lemmatize the content
         lemmatizer = WordNetLemmatizer()
 

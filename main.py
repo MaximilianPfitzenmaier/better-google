@@ -12,8 +12,8 @@ if __name__ == '__main__':
     # crawler.crawl()
     crawler.create_inout_links()
 
-    test_query = input("Query: ")
-    query = src.query_handler.Query(test_query, db)
+    # test_query = input("Query: ")
+    # query = src.query_handler.Query("food", db)
 
     # returns (doc_id, url, title, description, img, keywords, ranking_score, )
     print(query.get_search_results(100))
