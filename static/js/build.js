@@ -12,9 +12,11 @@ datadiv.querySelectorAll('.data_index').forEach((data) =>{
             url: data.querySelectorAll('li')[1].textContent,
             title: data.querySelectorAll('li')[2].textContent,
             description: data.querySelectorAll('li')[3].textContent,
-            img: data.querySelectorAll('li')[4].textContent,
-            keywords: data.querySelectorAll('li')[5].textContent,
+            uncutcontent: data.querySelectorAll('li')[4].textContent,
+            img: data.querySelectorAll('li')[5].textContent,
             ranking_score: data.querySelectorAll('li')[6].textContent,
+            keywords: data.querySelectorAll('li')[7].textContent,
+            content: data.querySelectorAll('li')[8].textContent,
         }
     
     databuildArray.push(indexArray);
@@ -48,7 +50,10 @@ for (var i = 0; i < databuildArray.length; i++) {
     var description = document.createElement("p"); // Create a new description element in each iteration
     description.classList.add("description");
     description.textContent = databuildArray[i]["description"];
-    
+    if(databuildArray[i]["description"] == "" || databuildArray[i]["description"] == "None"){ // if description is empty use the first 50 words of Page content
+      description.textContent = databuildArray[i]["content"];
+    }
+
     var numberbox = document.createElement("div"); // Create a new numberbox element in each iteration
     numberbox.classList.add("num");
     numberbox.textContent = i + 1;

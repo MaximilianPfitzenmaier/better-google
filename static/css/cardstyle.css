@@ -30,6 +30,7 @@ body {
 
   .inner-card{
     display: inline-block;
+    width: 85%;
   }
 
   .card-item {
