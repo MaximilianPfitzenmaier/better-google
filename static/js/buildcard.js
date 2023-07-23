@@ -27,6 +27,16 @@ console.log(databuildArray);
 var spinner = document.createElement("div");
 var fragment = document.createDocumentFragment();
 
+function checkQueryString_exceed(inputString) {
+    const searchString = "500";
+    return inputString.includes(searchString);
+  }
+  
+  function replaceJavaSentence(inputString, sentenceToReplace, replacement) {
+    const regex = new RegExp(sentenceToReplace, "g");
+    return inputString.replace(regex, replacement);
+  }
+
 spinner.classList.add("spinner");
 if(databuildArray.length != 0){
     var firstscore = 100 / databuildArray[0]["ranking_score"];
@@ -92,6 +102,9 @@ for (var i = 0; i < databuildArray.length; i++) {
     url.setAttribute("href", databuildArray[i]["url"]);
     url.classList.add("header-title");
     url.textContent = databuildArray[i]["title"];
+    if(checkQueryString_exceed(databuildArray[i]["title"])){
+        url.textContent = "";
+    }
     innercard.appendChild(url);
 
     var a = document.createElement("a") // Create a new url element in each iteration
@@ -103,8 +116,12 @@ for (var i = 0; i < databuildArray.length; i++) {
     description.classList.add("description");
     description.textContent = databuildArray[i]["description"];
     if(databuildArray[i]["description"] == "" || databuildArray[i]["description"] == "None"){ // if description is empty use the first 50 words of Page content
-        description.textContent = databuildArray[i]["content"];
-    }
+        description.textContent = replaceJavaSentence(databuildArray[i]["content"], "please activate javascript please activate javascript browser setting please activate cooky browser setting", "");
+  
+      }
+      if(checkQueryString_exceed(databuildArray[i]["description"])){
+        description.textContent = "";
+      }
     
     var numberbox = document.createElement("div"); // Create a new numberbox element in each iteration
     numberbox.classList.add("num");
