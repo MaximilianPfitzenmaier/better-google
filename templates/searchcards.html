@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Search Results</title>
+  <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/cardstyle.css') }}">
+</head>
+<body>
+
+  <div class="sticky-card">
+    <div id="sticky-container" class="sticky-item">
+      <div class="img-outer">
+        <img id="sticky-img" class="page_img" alt="platzhalter" src="../hero-942x628.jpg" />
+      </div>
+      
+      <h2 id="sticky-header" class="header">Sticky Card</h2>
+      <a id="sticky-link">go to Website</a>
+      <h2 class="head-2" >Score</h2>
+      <div class="donut-chart" data-percentage="50"></div>
+
+      <h2 class="head-2" >Keywords</h2>
+      <div class="keywords"></div>
+    </div>
+    <!-- Content of the sticky card -->
+</div>
+
+<div class="tue-logo-container">
+  <button id="moon-button">
+    <div id="moon-circle">
+      <div id="moon-overlay"></div>
+    </div>
+  </button>
+  <div id="BITV" class="bitv"><span class="icon icon-bitv">Zoom</span><span class="arrow down"></span>
+    <div class="dropdown-menu">
+      <ul class="no-style">
+        <li id="zoom-1">80% Zoom</li>
+        <li id="zoom-2">90% Zoom</li>
+        <li id="zoom-3">100% Zoom</li>
+        <li id="zoom-4">110% Zoom</li>
+        <li id="zoom-5">120% Zoom</li>
+      </ul>
+    </div>
+  </div>
+  <img id="searchimage"  class="tue-logo" src="{{ url_for('static', filename='img/tue_search2.png') }}" alt="search_logo">
+</div>
+
+
+<div style="display: none;"class="data_build">
+  {% if keytest %}
+      <h2 style="display: none;" id="you_sure">{{ keytest }}</h2>
+  {% endif %}
+  {% if query %}
+      <h2 id="searched_query">{{ query }}</h2>
+      <p>Execution Time: {{ execution_time }} min</p>
+      
+      {% for result in results %}
+          <div class="data_index">
+          {% for data in result %}
+              <li>{{ data }}</li>
+          {% endfor %}
+          </div>
+      {% endfor %}
+      
+  {% endif %}
+</div>
+
+<div class="query_container">
+  <h2 class="head-2">Your Results for: </h2>
+  <h2 id="searchquery" class="head-2" ></h2>
+</div>
+
+  <div id="cards-container" >
+
+  </div>
+  
+
+  <div class="overlay" id="overlay"></div>
+  <div class="popup" id="popup">
+    <p style="color: #000;">You search query contains more than 20 words or 10 keywords. This could have detrimental effects on you search results</p>
+    <small style="color: #000; display: block;" >Don't know how to use the search query?</small>
+    <a style="color: #000;margin-bottom: 1em;display: block;" href="https://www.wikihow.com/Search-Google" target="_blank">Click Me!</a>
+      <img class="yousure" src="{{ url_for('static', filename='img/ru-sure-about-that.gif') }}" alt="search_logo">
+      <button class="surebutton" onclick="confirmPopup()">Yes!</button>
+      <button class="surebutton" onclick="deniePopup()">No!</button>
+  </div>
+
+  
+  <div id="overlay-search"></div>
+  <div id="popup-search">
+    <span id="close-popup-search" style="display:none;">&times;</span>
+    <img class="logo" src="{{ url_for('static', filename='img/tue_search2.png') }}" alt="search_logo">
+    <div class="search-container">
+      
+      <form id="submit_form" method="POST" action="/">
+        <input class="search" id="query_input" type="text" name="query" placeholder="Enter your query" required onkeyup="checkWordCount(this)">
+        <input style="display: none;" class="search" id="" type="text" name="keytest" placeholder="0" onkeyup="checkWordCount(this)" value="0">
+        <input style="display: none;" class="search" id="confirmkey" type="text" name="confirm" placeholder="0" onkeyup="checkWordCount(this)" value="0">
+        <input style="display: none;" type="checkbox" name="checkbox" value="checked"  checked>
+    </form>
+    <button  style="display: none;" class="search_button" type="submit" form="submit_form" onclick="showProcessing()">Search</button>
+    <div id="loading-text"></div>
+    </div>
+  </div>
+</body>
+<script src="{{ url_for('static', filename='js/buildcard.js') }}"></script>
+<script src="{{ url_for('static', filename='js/searchspin.js') }}"></script>
+<script src="{{ url_for('static', filename='js/cards.js') }}"></script>
+<script src="{{ url_for('static', filename='js/utility.js') }}"></script>
+</html>
