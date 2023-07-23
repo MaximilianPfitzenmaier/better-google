@@ -101,7 +101,6 @@ for (var i = 0; i < databuildArray.length; i++) {
     url.classList.add("header-title");
     url.textContent = databuildArray[i]["title"];
     if(checkQueryString_exceed(databuildArray[i]["title"])){
-        console.log(databuildArray[i]["description"]);
         url.textContent = "";
     }
     innercard.appendChild(url);

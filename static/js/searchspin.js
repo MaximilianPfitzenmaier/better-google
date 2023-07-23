@@ -263,8 +263,6 @@
           span.textContent = '0'; // Start the number at 0
       
           li.textContent = item.split(' ')[0].slice(1,-1).replaceAll("'","");
-          //console.log(item.split(' ')[0]); // Extract the keyword from the array element
-          //li.appendChild(span);
 
           excluded_wordlist = "query exceed limit allow max create length char 500"
           if(!excluded_wordlist.includes(li.textContent)){

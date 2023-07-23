@@ -12,7 +12,6 @@ def home():
     if request.method == 'POST':
         query_text = request.form['query']
         checkbox = request.form.get('checkbox', 'unchecked')
-        # ================= Test if to many keywords
 
         # Normalize and lemmatize the query
         temp_query = src.web_crawler.normalize_text(query_text)
@@ -28,18 +27,17 @@ def home():
         # Join the unique words back into a string
         keywords = ' '.join(unique_words_list)
         keylength = len(str(keywords).split())
-        print(len(str(keywords).split()))
+        
         if (keylength > 9 and request.form['keytest'] == "0" and request.form['confirm'] == "0"):
             return render_template('searchinput.html', keytest=keylength, query=query_text)
-
-         # =================
 
         time_start = time.time()
 
         # DATABASE
         db = src.database.Database()
         # db.drop_all_tables()
-        db.create_keywords_table()
+        # db.create_keywords_table()
+        
         # CRAWLER
         # crawler = src.web_crawler.Crawler(db)
         # crawler.crawl()
@@ -47,15 +45,13 @@ def home():
 
         # QUERY
         query = src.query_handler.Query(query_text, db)
-        print(query.prepared_query)
+        # print(query.prepared_query)
 
-        urls = db.get_all_urls_from_keywords(query.prepared_query)
-        print(urls)
+        # urls = db.get_all_urls_from_keywords(query.prepared_query)
 
         # returns (doc_id, url, title, description, img, ranking_score)
         query.get_search_results(100)
         search_results = query.search_results
-        # print(f'ergebnisse: {search_results}')
 
         # Calculate the execution time
         time_end = time.time()

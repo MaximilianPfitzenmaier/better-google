@@ -34,13 +34,10 @@ class Query:
         result_string = ' '.join(unique_words_list)
         self.prepared_query = result_string
 
-        print('Prepared query: ' + self.prepared_query)
-
     def get_index(self) -> None:
         """
         Creates the index on which we can further select our results later on
         """
-        print(self.prepared_query.split(' '))
         self.index = self.db.fetch_index(self.prepared_query.split(' '))
 
     def link_based_ranking(self):

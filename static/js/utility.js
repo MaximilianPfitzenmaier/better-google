@@ -129,12 +129,10 @@
                 document.getElementById('submit_form').setAttribute('onsubmit', 'return false;');
                 document.getElementById('overlay').style.display = 'block';
                 document.getElementById('popup').style.display = 'block';
-                console.log('asdasd222')
             } else {
                 document.getElementById('submit_form').removeAttribute('onsubmit');
                 document.getElementById('overlay').style.display = 'none';
                 document.getElementById('popup').style.display = 'none';
-                console.log('asdasd')
             }
         }
         

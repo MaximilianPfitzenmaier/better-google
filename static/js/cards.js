@@ -88,7 +88,6 @@ function showPopup() {
     tueLogo.addEventListener('click', function() {
       overlay1.style.display = 'block';
       popup1.style.display = 'block';
-      console.log('asdasdas');
     });
   
     closePopup1.addEventListener('click', function() {

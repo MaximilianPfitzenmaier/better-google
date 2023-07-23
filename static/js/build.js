@@ -123,10 +123,3 @@ for (var i = 0; i < databuildArray.length; i++) {
 }
 
 document.getElementById("outer_spinner").appendChild(fragment); // Append the fragment to the outer_spinner element
-
-
-
-
-console.log(databuildArray);
-
-
