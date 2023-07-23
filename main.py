@@ -56,7 +56,7 @@ def home():
         wordlength = len(query_text.split())
 
         
-        if checkbox == 'checked':
+        if checkbox != 'checked':
             return render_template('searchcards.html', query=query_text, results=search_results, execution_time=execution_time, wordlength=wordlength, keywords=keywords)
         else:    
             return render_template('index.html', query=query_text, results=search_results, execution_time=execution_time, wordlength=wordlength, keywords=keywords)

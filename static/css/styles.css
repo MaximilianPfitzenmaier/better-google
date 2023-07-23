@@ -105,6 +105,7 @@ body {
       overflow: hidden;
       text-overflow: ellipsis;
       padding-right: 36px;
+      display: -webkit-box;
     }
   
     .num {

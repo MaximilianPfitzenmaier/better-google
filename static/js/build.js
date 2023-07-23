@@ -31,8 +31,11 @@ let firstscore = 100 / databuildArray[0]["ranking_score"];
 let score, keys;
 
 function checkQueryString_exceed(inputString) {
-  const searchString = "500";
-  return inputString.includes(searchString);
+  const searchString = "MYMEMORY WARNING";
+  const searchString2 = "QUERY LENGTH LIMIT";
+  if(inputString.includes(searchString) || inputString.includes(searchString2)){
+    return true;
+  }
 }
 
 function replaceJavaSentence(inputString, sentenceToReplace, replacement) {
@@ -67,7 +70,8 @@ for (var i = 0; i < databuildArray.length; i++) {
       description.textContent = replaceJavaSentence(databuildArray[i]["content"], "please activate javascript please activate javascript browser setting please activate cooky browser setting", "");
 
     }
-    if(checkQueryString_exceed(databuildArray[i]["description"])){
+
+    if(checkQueryString_exceed(description.textContent)){
       description.textContent = "";
     }
 

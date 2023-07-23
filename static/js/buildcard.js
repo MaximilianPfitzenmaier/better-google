@@ -22,14 +22,15 @@ datadiv.querySelectorAll('.data_index').forEach((data) =>{
     databuildArray.push(indexArray);
 })
 
-console.log(databuildArray);
-
 var spinner = document.createElement("div");
 var fragment = document.createDocumentFragment();
 
 function checkQueryString_exceed(inputString) {
-    const searchString = "500";
-    return inputString.includes(searchString);
+    const searchString = "MYMEMORY WARNING";
+    const searchString2 = "QUERY LENGTH LIMIT";
+    if(inputString.includes(searchString) || inputString.includes(searchString2)){
+      return true;
+    }
   }
   
   function replaceJavaSentence(inputString, sentenceToReplace, replacement) {
@@ -77,9 +78,6 @@ for (var i = 0; i < databuildArray.length; i++) {
             favicon = "/static/img/wow.png";
         }
     }
-    
-    console.log(imgsource);
-    console.log(imgsource[0])
     carditem.setAttribute("data-key", keys);
     carditem.setAttribute("data-score", score);
     carditem.setAttribute("data-img", pageimg);
@@ -103,6 +101,7 @@ for (var i = 0; i < databuildArray.length; i++) {
     url.classList.add("header-title");
     url.textContent = databuildArray[i]["title"];
     if(checkQueryString_exceed(databuildArray[i]["title"])){
+        console.log(databuildArray[i]["description"]);
         url.textContent = "";
     }
     innercard.appendChild(url);
@@ -118,10 +117,10 @@ for (var i = 0; i < databuildArray.length; i++) {
     if(databuildArray[i]["description"] == "" || databuildArray[i]["description"] == "None"){ // if description is empty use the first 50 words of Page content
         description.textContent = replaceJavaSentence(databuildArray[i]["content"], "please activate javascript please activate javascript browser setting please activate cooky browser setting", "");
   
-      }
-      if(checkQueryString_exceed(databuildArray[i]["description"])){
-        description.textContent = "";
-      }
+    }
+    if(checkQueryString_exceed(description.textContent)){
+    description.textContent = "";
+    }
     
     var numberbox = document.createElement("div"); // Create a new numberbox element in each iteration
     numberbox.classList.add("num");
