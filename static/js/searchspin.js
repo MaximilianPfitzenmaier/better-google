@@ -265,7 +265,16 @@
           li.textContent = item.split(' ')[0].slice(1,-1).replaceAll("'","");
           //console.log(item.split(' ')[0]); // Extract the keyword from the array element
           //li.appendChild(span);
-          keywordsDiv.appendChild(li);
+
+          excluded_wordlist = "query exceed limit allow max create length char 500"
+          if(!excluded_wordlist.includes(li.textContent)){
+            if(li.textContent.length < 21 ){
+              keywordsDiv.appendChild(li);
+            }
+          }
+
+
+          
       
           // Animation variables
           var delay = 500; // Delay in milliseconds before starting the counting animation

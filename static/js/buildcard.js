@@ -20,6 +20,8 @@ datadiv.querySelectorAll('.data_index').forEach((data) =>{
     databuildArray.push(indexArray);
 })
 
+console.log(databuildArray);
+
 var spinner = document.createElement("div");
 var fragment = document.createDocumentFragment();
 
@@ -37,9 +39,38 @@ for (var i = 0; i < databuildArray.length; i++) {
     /* add data attributes for donut bar and images*/
     score = databuildArray[i]["ranking_score"] * firstscore;
     keys = databuildArray[i]["keywords"];
+    var imgsource = databuildArray[i]["img"].slice(1,-1).split(', ');
+    var pageimg = imgsource[0].slice(1,-1);
+    var favicon = "/static/img/wow.png";
+    var randomnumber = Math.floor(Math.random() * 3) + 1;
+    if(imgsource[0] == ""){
+        switch (randomnumber) {
+            case 1:
+              pageimg = "/static/img/kuschel-maus.jpg";
+              break;
+            case 2:
+              pageimg = "/static/img/maus-erwartet-anfrage.jpg";
+              break;
+            case 3:
+              pageimg = "/static/img/runde-png-maus.png";
+              break;
+            default:
+              pageimg = "/static/img/forest.jpg";
+          }
+        
+    }
+    if(imgsource.length == 2){
+        favicon = imgsource[1].slice(1,-1);
+        if(favicon == 'empty'){
+            favicon = "/static/img/wow.png";
+        }
+    }
+    
+    console.log(imgsource);
+    console.log(imgsource[0])
     carditem.setAttribute("data-key", keys);
     carditem.setAttribute("data-score", score);
-    carditem.setAttribute("data-img", databuildArray[i]["img"]);
+    carditem.setAttribute("data-img", pageimg);
     
     var cardbox = document.createElement("div"); // Create a new cardbox element in each iteration
     cardbox.classList.add("card_box");
@@ -49,7 +80,7 @@ for (var i = 0; i < databuildArray.length; i++) {
 
     var img = document.createElement("img"); // Create a new img element in each iteration
     img.classList.add("little-img");
-    img.setAttribute("src", databuildArray[i]["img"]);
+    img.setAttribute("src", favicon);
     imgcontainer.appendChild(img);
 
     var innercard = document.createElement("div") // create a new div element as Conatiner for img styling in each iteration
@@ -62,7 +93,7 @@ for (var i = 0; i < databuildArray.length; i++) {
     innercard.appendChild(url);
 
     var a = document.createElement("a") // Create a new url element in each iteration
-    a.setAttribute("src", databuildArray[i]["url"]);
+    a.setAttribute("href", databuildArray[i]["url"]);
     a.textContent = databuildArray[i]["url"];
     innercard.appendChild(a);
 

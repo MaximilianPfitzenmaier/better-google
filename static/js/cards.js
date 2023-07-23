@@ -10,10 +10,18 @@ if(cardItems[0]){
   const href = cardItems[0].querySelector('href');
   header = cardItems[0].querySelector('h2').textContent;
   stickyimg.src= cardItems[0].getAttribute('data-img');
+
+  stickyLink.href = href;
+  stickyheader.textContent= header;
+  
+
   donutChart.setAttribute('data-percentage', cardItems[0].getAttribute('data-score'));
   updateDonutChart(donutChart, cardItems[0].getAttribute('data-score'));
-  
-  
+
+  const initdataKey = cardItems[0].getAttribute('data-key');
+  const initelements = initdataKey.split(', ');
+  appendLiElements(initelements)
+
   cardItems.forEach(card => {
     card.addEventListener('mouseover', function() {
       const link = card.querySelector('a');
@@ -31,19 +39,18 @@ if(cardItems[0]){
       /* Keywords */
       const dataKey = card.getAttribute('data-key');
       const elements = dataKey.split(', ');
+      
+
       appendLiElements(elements)
+
+      
     });
   });
 }
 
 
 
-/* moon button*/
 
-var moonButton = document.getElementById("moon-button");
-moonButton.addEventListener("click", function() {
-  moonButton.classList.toggle("clicked");
-});
 
 
 /*link click*/
@@ -62,19 +69,11 @@ function redirectOnClick() {
   }
   
 
-  function addDarkClassOnClick() {
-    var moonButton = document.getElementById("moon-button");
-    var body = document.body;
-  
-    moonButton.addEventListener("click", function() {
-        body.classList.toggle("dark");
-    });
-  }
+
   
     // Attach the event listener to the document
     document.addEventListener('DOMContentLoaded', function() {
         redirectOnClick();
-        addDarkClassOnClick();
       });
 
 

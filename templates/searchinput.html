@@ -14,10 +14,15 @@
                 <input class="search" id="query_input" type="text" name="query" placeholder="Enter your query" required onkeyup="checkWordCount(this)">
                 <input style="display: none;" class="search" id="" type="text" name="keytest" placeholder="0" onkeyup="checkWordCount(this)" value="0">
                 <input style="display: none;" class="search" id="confirmkey" type="text" name="confirm" placeholder="0" onkeyup="checkWordCount(this)" value="0">
-                <div style="display: block; margin: auto; width: 170px;"><input style="    display: inline-block;"type="checkbox" name="checkbox" value="checked"> <p style="display: inline-block;">Turn on Cards Search!</p><div>
+                <div style="display: block; margin: auto; width: 170px;"><input style="    display: inline-block;"type="checkbox" name="checkbox" value="checked" checked> <p style="display: inline-block;">Turn on Cards Search!</p><div>
             </form>
             <button  class="search_button" type="submit" form="submit_form" onclick="showProcessing()">Search</button>
-            <div id="loading-text"></div>
+            <span id="moon-button">
+                <div id="moon-circle">
+                  <div id="moon-overlay"></div>
+                </div>
+              </span>
+            <div style="width: 360px;position: absolute;left: 39%;margin-top: 26px;" id="loading-text"></div>
     </div>
 
     {% if keytest %}
@@ -29,6 +34,9 @@
 
     <div class="overlay" id="overlay"></div>
     <div class="popup" id="popup">
+        <p style="color: #000;">You search query contains more than 20 words or 10 keywords. This could have detrimental effects on you search results</p>
+        <small style="color: #000; display: block;" >Don't know how to use the search query?</small>
+        <a style="color: #000;margin-bottom: 1em;display: block;" href="https://www.wikihow.com/Search-Google" target="_blank">Click Me!</a>
         <img class="yousure" src="{{ url_for('static', filename='img/ru-sure-about-that.gif') }}" alt="search_logo">
         <button class="surebutton" onclick="confirmPopup()">Yes!</button>
         <button class="surebutton" onclick="deniePopup()">No!</button>

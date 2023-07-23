@@ -36,6 +36,36 @@
         });
     }
 
+    /* moon button --> for dark mode */
+
+    var moonButton = document.getElementById("moon-button");
+    moonButton.addEventListener("click", function() {
+    moonButton.classList.toggle("clicked");
+    /* if darkmode activated save in localstorage */
+    if(localStorage.getItem("dark") !== null){
+        localStorage.removeItem("dark");
+    }else{
+        localStorage.setItem("dark", "active");
+    }
+    
+    
+    });
+
+    /* if value for darkmode exists darkmode was turned on */
+    if(localStorage.getItem("dark") !== null){
+    document.body.classList.add("dark");
+    moonButton.classList.add("clicked");
+    }
+
+    function addDarkClassOnClick() {
+        var moonButton = document.getElementById("moon-button");
+        var body = document.body;
+      
+        moonButton.addEventListener("click", function() {
+            body.classList.toggle("dark");
+        });
+      }
+
 /* Loading animation while processing search query*/
         function showProcessing() {
             const loadingText = document.getElementById("loading-text");
@@ -160,7 +190,7 @@
                 newParagraph3.classList.add("emptyp","emptyp3");
                 newParagraph4.classList.add("emptyp","emptyp4");
                 newImage.classList.add("wow_img");
-
+                document.body.classList.add('dark-info-card-empty');
                 document.getElementById('sticky-container').classList.add('info-card-empty');
                 // Append the new elements inside the info-card div
                 infocards.appendChild(newParagraph);
@@ -194,6 +224,7 @@
                 newImage.classList.add("wow_img");
 
                 document.querySelectorAll('.info-card')[0].classList.add('info-card-empty');
+                document.body.classList.add('dark-info-card-empty');
                 // Append the new elements inside the info-card div
                 infoCard.appendChild(newParagraph);
                 infoCard.appendChild(newParagraph2);
@@ -203,11 +234,49 @@
             }
         }
 
+
+    /* BITV Zoom function */
+
+    const zoomLIs = document.querySelectorAll('.dropdown-menu li');
+
+    zoomLIs.forEach(li => {
+      li.addEventListener('click', function(event) {
+        const zoomClassMatch = this.id.match(/^zoom-(\d+)$/);
+        if (zoomClassMatch) {
+          const zoomClass = 'zoom_' + zoomClassMatch[1];
+          // Remove existing zoom class from the body, if any
+          document.body.classList.forEach(className => {
+            if (className.startsWith('zoom_')) {
+              document.body.classList.remove(className);
+            }
+          });
+          // Add the new zoom class to the body
+          document.body.classList.add(zoomClass);
+          // save zoom inside local storage to saved selected option
+          localStorage.setItem("zoomlvl", zoomClass);
+
+          if (zoomClass == "zoom_3") {
+            document.body.classList.remove("active-zoom");
+          }else{
+            document.body.classList.add("active-zoom");
+          }
+          
+        }
+      });
+    });
+    
+    /* get saved zoom lvl */
+    if(localStorage.getItem("zoomlvl") !== null){
+        document.body.classList.add(localStorage.getItem("zoomlvl"));
+    }
+    
+
     /* call functions here if they should fire after page is fully loaded */
 
     document.addEventListener('DOMContentLoaded', function() {
         replaceNoneText();
         replaceImageSrc();
         resultempty();
-        replaceImageSrcCards()
+        replaceImageSrcCards();
+        addDarkClassOnClick();
     });

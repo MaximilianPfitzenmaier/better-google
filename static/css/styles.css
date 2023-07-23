@@ -330,10 +330,9 @@ body {
     justify-content: center;
     color: #fff;
     display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    overflow: auto;
+    padding: 0 64px;
+    height: 48px;
     padding: 0 64px;
   }
   .keywords li{
@@ -347,9 +346,41 @@ body {
     text-align: center;
   }
 
+  /* Styling the scrollbar (for WebKit-based browsers, like Chrome, Safari) */
+  .keywords::-webkit-scrollbar {
+    width: 2px; 
+    border-radius: 8px; 
+  }
+
+  .keywords::-webkit-scrollbar-thumb {
+    background-color: #fff; 
+    border-radius: 8px; 
+  }
+
+  .keywords::-webkit-scrollbar-thumb:hover {
+    background-color: #c4c4c4; 
+  }
+
+  /* Styling the scrollbar (for Firefox) */
+  .keywords::-moz-scrollbar {
+    width: 2px; 
+    border-radius: 8px; 
+  }
+
+  .keywords::-moz-scrollbar-thumb {
+    background-color: #888; 
+    border-radius: 8px; 
+  }
+
+  .keywords::-moz-scrollbar-thumb:hover {
+    background-color: #555; 
+  }
+
+
 /* popup */
 .yousure{
   display: block;
+  margin-bottom: 16px;
 }
 
 .surebutton{
@@ -379,6 +410,7 @@ body {
   left: 50%;
   transform: translate(-50%, -50%);
   background-color: #fff;
+  width: 498px;
   padding: 20px;
   text-align: center;
   z-index: 1000;
@@ -437,6 +469,284 @@ body {
 
 .search-button:hover {
   background-color: #e5e5e5;
+}
+
+  /* BITV Button*/
+  .bitv{
+    position: absolute;
+    left: 26px;
+    top: 26px;
+  }
+
+  #BITV .dropdown-menu:before {
+    top: -43px;
+    height: 43px;
+  }
+
+  .dropdown-menu:after{
+    border-color: transparent transparent #000 transparent !important;
+  }
+
+  .bitv .dropdown-menu ul {
+    margin-bottom: 0;
+    width: 100%;
+  }
+
+  ul.no-style{
+    list-style-type: none;
+    padding-left: 0;
+  }
+  .bitv .dropdown-menu li {
+      background: #fff;
+      padding: 6% 15%;
+      width: auto;
+      height: auto;
+      border-bottom: 1px solid #f8f8f8;
+  }
+
+
+  .bitv .dropdown-menu{
+      min-width: 6rem;
+      left: -50%;
+      cursor: pointer;
+  }
+
+  .dropdown-menu {
+    position: absolute;
+    top: 0%;
+    background-color: transparent;
+    left: 0;
+    z-index: 1000;
+    display: none;
+    float: left;
+    width: 200px;
+    min-width: 10rem;
+    padding: 0.5rem 0;
+    margin: 0.125rem 0 0;
+    font-size: 1rem;
+    color: #212529;
+    text-align: left;
+    list-style: none;
+    border-radius: 15px;
+}
+
+  .bitv:hover .dropdown-menu{
+    display: flex;
+    flex-direction: column;
+  }
+
+  .bitv .dropdown-menu:hover .dropdown-menu{
+    display: flex;
+    flex-direction: column;
+  }
+  .arrow {
+    border: solid black;
+    border-width: 0 4px 4px 0;
+    display: inline-block;
+    padding: 3px;
+    position: absolute;
+    top: 2px;
+    right: -18px;
+  }
+  
+  .down {
+    transform: rotate(45deg);
+    -webkit-transform: rotate(45deg);
+  }
+
+
+  body.zoom_1{
+    zoom: 80%;
+  }
+
+  body.zoom_1 .sticky-card .sticky-item {
+    height: 900px;
+  }
+
+  body.zoom_1 .sticky-card, body.zoom_2 .sticky-card, body.zoom_3 .sticky-card, body.zoom_4 .sticky-card, body.zoom_5 .sticky-card  {
+    min-height: auto;
+  }
+  
+  .dark-info-card-empty.zoom_1 .sticky-card{
+    height: 990px;
+  }
+
+  body.zoom_2{
+    zoom: 90%;
+  }
+
+  body.zoom_2 .sticky-card .sticky-item {
+    height: 820px;
+  }
+
+  .dark-info-card-empty.zoom_2 .sticky-card{
+    height: 880px;
+  }
+
+  body.zoom_3{
+    zoom: 100%;
+  }
+
+  .dark-info-card-empty.zoom_3 .sticky-card{
+    height: 770px;
+  }
+
+  body.zoom_4{
+    zoom: 110%;
+  }
+
+  body.zoom_4 .info-card {
+    height: 640px;
+    overflow: auto;
+  }
+
+  .dark-info-card-empty.zoom_4 .sticky-card{
+    height: 700px;
+  }
+
+  body.zoom_5{
+    zoom: 120%;
+  }
+  body.zoom_5 .info-card {
+    height: 580px;
+    overflow: auto;
+  } 
+
+  .dark-info-card-empty.zoom_5 .sticky-card{
+    height: 620px;
+  }
+
+  .dark .info-card{
+    border: solid #fff;
+    border-width: 0;
+  }
+
+  .dark .icon-bitv{
+    color: #fff;
+  }
+
+  .bitv .dropdown-menu li{
+    background: #000;
+    border-bottom: 1px solid #1c1c1c;
+    color: #fff;
+  }
+
+  .bitv .dropdown-menu li:hover {
+    background: #1c1c1c;
+  }
+
+  .bitv{
+    color: #fff;
+  }
+
+  .arrow {
+    border: solid #fff;
+    border-width: 0 4px 4px 0;
+  }
+/* Styling the scrollbar (for WebKit-based browsers, like Chrome, Safari) */
+.active-zoom .info-card::-webkit-scrollbar {
+  width: 2px; 
+  border-radius: 8px; 
+}
+
+.active-zoom .info-card::-webkit-scrollbar-thumb {
+  background-color: #c4c4c4; 
+  border-radius: 8px; 
+}
+
+.active-zoom .info-card::-webkit-scrollbar-thumb:hover {
+  background-color: #888; 
+}
+
+/* Styling the scrollbar (for Firefox) */
+.active-zoom .info-card::-moz-scrollbar {
+  width: 2px; 
+  border-radius: 8px; 
+}
+
+.active-zoom .info-card::-moz-scrollbar-thumb {
+  background-color: #c4c4c4; 
+  border-radius: 8px; 
+}
+
+.active-zoom .info-card::-moz-scrollbar-thumb:hover {
+  background-color: #888; 
+}
+
+  /* moon button*/
+
+  .info-card #moon-button{
+    position: absolute;
+    right: 32px;
+    top: 20px;
+  }
+
+  #moon-button {
+    width: 100px;
+    height: 30px;
+    cursor: pointer;
+    background-color: #fff;
+    border: none;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.85);
+    display: block;
+    margin: 0 auto;
+    transition: all 0.5s ease-out;
+  }
+  #moon-button.clicked{
+    background-color: #000;
+    transition: all 0.5s ease-out;
+    box-shadow: 0 1px 2px rgba(255,255,255,0.85);
+  }
+  
+  #moon-circle {
+    width: 20px;
+    height: 20px;
+    margin: 5px auto;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.85);
+    background-color: #fff;
+    border-radius: 50%;
+    position: relative;
+    z-index: 1;
+  }
+  
+  #moon-overlay {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-155%, -50%);
+    width: 100%;
+    height: 100%;
+    background-color: #fff;
+    border-radius: 50%;
+    transition: all 0.5s ease-out;
+  }
+  
+  #moon-button.clicked #moon-overlay {
+    width: 100%;
+    transform: translate(-95%, -50%);
+    background-color: #000;
+    transition: all 0.5s ease-out;
+  }
+
+
+  .dark #loading-text{
+    color: #fff;
+  }
+  
+
+
+/* Darkmode*/
+body.dark{
+  background-color: #000;
+}
+
+.dark .logo{
+  filter: invert(1);
+}
+
+.dark #submit_form p {
+  color: #fff;
 }
 
 /* Empty results */

@@ -56,9 +56,35 @@ for (var i = 0; i < databuildArray.length; i++) {
     var imgcontainer = document.createElement("div") // create a new div element as Conatiner for img styling in each iteration
     imgcontainer.classList.add("img_container");
 
+    var imgsource = databuildArray[i]["img"].slice(1,-1).split(', ');
+    var pageimg = imgsource[0].slice(1,-1);
+    var favicon = "/static/img/wow.png";
+    var randomnumber = Math.floor(Math.random() * 3) + 1;
+    if(imgsource[0] == ""){
+        switch (randomnumber) {
+            case 1:
+              pageimg = "/static/img/kuschel-maus.jpg";
+              break;
+            case 2:
+              pageimg = "/static/img/maus-erwartet-anfrage.jpg";
+              break;
+            case 3:
+              pageimg = "/static/img/runde-png-maus.png";
+              break;
+            default:
+              pageimg = "/static/img/forest.jpg";
+          }
+        
+    }
+    if(imgsource.length == 2){
+        favicon = imgsource[1].slice(1,-1);
+        if(favicon == 'empty'){
+            favicon = "/static/img/wow.png";
+        }
+    }
     var img = document.createElement("img"); // Create a new img element in each iteration
     img.classList.add("page_img");
-    img.setAttribute("src", databuildArray[i]["img"]);
+    img.setAttribute("src", pageimg);
     imgcontainer.appendChild(img);
 
     spinningbox.appendChild(url);

@@ -29,6 +29,17 @@
       <div id="moon-overlay"></div>
     </div>
   </button>
+  <div id="BITV" class="bitv"><span class="icon icon-bitv">Zoom</span><span class="arrow down"></span>
+    <div class="dropdown-menu">
+      <ul class="no-style">
+        <li id="zoom-1">80% Zoom</li>
+        <li id="zoom-2">90% Zoom</li>
+        <li id="zoom-3">100% Zoom</li>
+        <li id="zoom-4">110% Zoom</li>
+        <li id="zoom-5">120% Zoom</li>
+      </ul>
+    </div>
+  </div>
   <img id="searchimage"  class="tue-logo" src="{{ url_for('static', filename='img/tue_search2.png') }}" alt="search_logo">
 </div>
 
@@ -52,6 +63,10 @@
   {% endif %}
 </div>
 
+<div class="query_container">
+  <h2 class="head-2">Your Results for: </h2>
+  <h2 id="searchquery" class="head-2" ></h2>
+</div>
 
   <div id="cards-container" >
 
@@ -60,11 +75,13 @@
 
   <div class="overlay" id="overlay"></div>
   <div class="popup" id="popup">
+    <p style="color: #000;">You search query contains more than 20 words or 10 keywords. This could have detrimental effects on you search results</p>
+    <small style="color: #000; display: block;" >Don't know how to use the search query?</small>
+    <a style="color: #000;margin-bottom: 1em;display: block;" href="https://www.wikihow.com/Search-Google" target="_blank">Click Me!</a>
       <img class="yousure" src="{{ url_for('static', filename='img/ru-sure-about-that.gif') }}" alt="search_logo">
       <button class="surebutton" onclick="confirmPopup()">Yes!</button>
       <button class="surebutton" onclick="deniePopup()">No!</button>
   </div>
-  <div id="loading-text"></div>
 
   
   <div id="overlay-search"></div>
