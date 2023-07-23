@@ -14,9 +14,6 @@ and:
 We're using PostgresSQL.
 To connect, some parameters need to be supplied. Create a local database.txt file in the root of the project which contains host, database, user, password all on a new line. Example in database.py.
 
-copy database:
-\COPY documents(id, url, title, norm_title, keywords, description, norm_description, internal_links, external_links, in_links, out_links, content, img) FROM 'data.csv' CSV HEADER;
-
 # Frontier
 
 Exists in a database table and can be kept between executions.
