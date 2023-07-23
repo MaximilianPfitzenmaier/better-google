@@ -617,3 +617,74 @@ class Database:
         self.cursor.execute(sql)
         # print(self.cursor.statusmessage)
         self.connection.commit()
+
+    def create_keywords_table(self):
+        # Your SQL query to fetch keywords and URLs
+        sql_query = """
+            SELECT unnest(keywords) AS keyword, url
+            FROM documents
+        """
+
+        # Create a dictionary to store keywords and corresponding URLs
+        index_data = {}
+
+        try:
+            # Execute the SQL query
+            self.cursor.execute(sql_query)
+
+            # Fetch all the rows returned by the query
+            rows = self.cursor.fetchall()
+
+            # Organize the data into the index_data dictionary
+            for row in rows:
+                keyword = row[0]
+                url = row[1]
+                if keyword not in index_data:
+                    index_data[keyword] = [url]
+                else:
+                    index_data[keyword].append(url)
+
+        except psycopg2.Error as e:
+            print(f"Error: {e}")
+            # Handle the error here if needed
+
+        # Create the "index" table and insert data
+        try:
+            # Drop the "index" table if it exists
+            self.cursor.execute("DROP TABLE IF EXISTS keywords;")
+
+            # Create the "index" table
+            self.cursor.execute(
+                "CREATE TABLE keywords (keyword TEXT, urls TEXT[]);")
+
+            # Insert data into the "index" table
+            for keyword, urls in index_data.items():
+                self.cursor.execute(
+                    "INSERT INTO keywords (keyword, urls) VALUES (%s, %s);", (keyword, urls))
+
+            # Commit the changes
+            self.connection.commit()
+
+        except psycopg2.Error as e:
+            print(f"Error: {e}")
+            # Handle the error here if needed
+
+    def get_all_urls_from_keywords(self, search_string):
+        keywords = search_string.split()
+        urls_list = []
+
+        try:
+            # Fetch URLs for each keyword from the "index" table
+            # Fetch URLs for each keyword from the "index" table
+            for keyword in keywords:
+                self.cursor.execute(
+                    "SELECT urls FROM index WHERE keyword = %s;", (keyword,))
+                rows = self.cursor.fetchall()
+                for row in rows:
+                    urls_list.extend(row[0])
+
+        except psycopg2.Error as e:
+            print(f"Error: {e}")
+            # Handle the error here if needed
+
+        return urls_list

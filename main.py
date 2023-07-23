@@ -13,7 +13,7 @@ def home():
         query_text = request.form['query']
         checkbox = request.form.get('checkbox', 'unchecked')
         # ================= Test if to many keywords
-        
+
         # Normalize and lemmatize the query
         temp_query = src.web_crawler.normalize_text(query_text)
         # Split the original string into a list of words
@@ -29,42 +29,46 @@ def home():
         keywords = ' '.join(unique_words_list)
         keylength = len(str(keywords).split())
         print(len(str(keywords).split()))
-        if(keylength > 9 and request.form['keytest'] == "0" and request.form['confirm'] == "0"):
+        if (keylength > 9 and request.form['keytest'] == "0" and request.form['confirm'] == "0"):
             return render_template('searchinput.html', keytest=keylength, query=query_text)
-        
-        
+
          # =================
-            
+
         time_start = time.time()
+
+        # DATABASE
         db = src.database.Database()
-        #db.drop_all_tables()
+        # db.drop_all_tables()
+        db.create_keywords_table()
+        # CRAWLER
+        # crawler = src.web_crawler.Crawler(db)
+        # crawler.crawl()
+        # crawler.create_inout_links()
 
-        #crawler = src.web_crawler.Crawler(db)
-        #crawler.crawl()
-        #crawler.create_inout_links()
-
+        # QUERY
         query = src.query_handler.Query(query_text, db)
-        print(query.get_search_results)
+        print(query.prepared_query)
+
+        urls = db.get_all_urls_from_keywords(query.prepared_query)
+        print(urls)
+
         # returns (doc_id, url, title, description, img, ranking_score)
         query.get_search_results(100)
         search_results = query.search_results
-        print(f'ergebnisse: {search_results}')
+        # print(f'ergebnisse: {search_results}')
 
         # Calculate the execution time
         time_end = time.time()
         execution_time = (time_end - time_start) / 60
         wordlength = len(query_text.split())
 
-        
         if checkbox != 'checked':
             return render_template('searchcards.html', query=query_text, results=search_results, execution_time=execution_time, wordlength=wordlength, keywords=keywords)
-        else:    
+        else:
             return render_template('index.html', query=query_text, results=search_results, execution_time=execution_time, wordlength=wordlength, keywords=keywords)
-
 
     return render_template('searchinput.html')
 
 
 if __name__ == '__main__':
     app.run()
-
