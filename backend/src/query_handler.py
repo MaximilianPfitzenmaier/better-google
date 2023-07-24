@@ -1,8 +1,8 @@
 import re
 import nltk
-import src.web_crawler
-from nltk.corpus import stopwords
+import backend.src.web_crawler as web_crawler
 import math
+from nltk.corpus import stopwords
 from collections import defaultdict
 import os
 
@@ -19,7 +19,7 @@ class Query:
         self.user_query = user_query
 
         # Normalize and lemmatize the query
-        temp_query = src.web_crawler.normalize_text(self.user_query)
+        temp_query = web_crawler.normalize_text(self.user_query)
 
         # Split the original string into a list of words
         words = temp_query.split()
@@ -52,7 +52,8 @@ class Query:
         if max_rank == 0:
             max_rank = 1
         self.index = [
-            (doc[0], doc[1], doc[2], doc[3], doc[4], doc[5], len(doc[6]) / max_rank, doc[7], doc[8])
+            (doc[0], doc[1], doc[2], doc[3], doc[4],
+             doc[5], len(doc[6]) / max_rank, doc[7], doc[8])
             for doc in self.index
         ]
 
@@ -99,7 +100,7 @@ class Query:
             for word, tf in tf_score.items():
                 tf_idf_score[word] = tf * idf_scores[word]
             tf_idf_scores.append(tf_idf_score)
-        
+
         return tf_idf_scores
 
     def rank_documents(self, tf_idf_scores):
@@ -114,7 +115,7 @@ class Query:
         for score in tf_idf_scores:
             doc_score = sum(score.values())
             document_scores.append(doc_score)
-        
+
         max_value = max(document_scores)
         if max_value == 0:
             max_value = 1
@@ -143,7 +144,7 @@ class Query:
                 score *= tdist / len_doc
 
             document_scores.append(round(score, 10))
-        
+
         # normalize
         max_value = max(document_scores)
         if max_value == 0:
@@ -173,15 +174,17 @@ class Query:
         self.link_based_ranking()
         tf_idf_scores = self.rank_documents(self.calculate_tf_idf())
         q_likelihood_scores = self.rank_likelihood()
-        
+
         # combine and add the relevance scores with some weights added to each ranking
-        self.index = [(doc[0], doc[1], doc[2], doc[3], doc[4], doc[5], 
-                       0.2 * doc[6] + # link-based ranking score
-                       0.4 * tf_idf_scores[index] + # tf-idf-based ranking score
-                       0.4 * q_likelihood_scores[index], # query-likelihood ranking score
+        self.index = [(doc[0], doc[1], doc[2], doc[3], doc[4], doc[5],
+                       0.2 * doc[6] +  # link-based ranking score
+                       # tf-idf-based ranking score
+                       0.4 * tf_idf_scores[index] +
+                       # query-likelihood ranking score
+                       0.4 * q_likelihood_scores[index],
                        doc[7], doc[8]) for index, doc in enumerate(self.index)]
         self.index.sort(key=lambda doc: doc[6], reverse=True)
-        
+
         # considering runtime, adding diversity is too expensive for us at this stage
 
         # Set the results
@@ -198,7 +201,8 @@ class Query:
         with open(f'search_results_{file_id}', 'w') as f:
             num = 1
             for result in self.search_results:
-                f.write(str(num) + '    ' + result[1] + '    ' + str(result[6]) + '\n')
+                f.write(str(num) + '    ' +
+                        result[1] + '    ' + str(result[6]) + '\n')
                 num += 1
         print('Search results saved to file search_results_' + str(file_id))
 
