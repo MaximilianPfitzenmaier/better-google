@@ -1,0 +1,4 @@
+localhost
+postgres
+postgres
+root
