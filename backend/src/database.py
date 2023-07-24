@@ -106,8 +106,7 @@ class Database:
                     element.get("normalized_title", None),
                     element.get("keywords", None),
                     element.get("description", None),
-                    element.get("normalized_description", None)
-                    if element.get("normalized_description", None) else [],
+                    element.get("normalized_description", None),
                     element.get("internal_links", []),
                     element.get("external_links", []),
                     element.get("in_links", None),

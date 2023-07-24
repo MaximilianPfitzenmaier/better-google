@@ -18,6 +18,11 @@ import threading
 from translate import Translator as TranslateTranslator
 from googletrans import Translator as GoogleTranslator
 import os
+import gensim.downloader as api
+
+
+# Load the smaller pre-trained GloVe model
+model = api.load("glove-wiki-gigaword-100")
 # import goslate
 
 # Create a thread-local instance of WordNet and a lock
@@ -150,8 +155,8 @@ class Crawler:
         nltk.download('averaged_perceptron_tagger',
                       download_dir=nltk_data)
         self.min_depth_limit = 0
-        self.max_depth_limit = 1
-        self.max_threads = 12
+        self.max_depth_limit = 0
+        self.max_threads = 4
         self.base_crawl_delay = 2.0
 
         # If the frontier is empty, we load it with our initial frontier
@@ -265,10 +270,14 @@ class Crawler:
                     limited_content = limit_string_to_50_words(
                         content)
 
+                    keywords = []
+                    all_related_words = []
                     try:
                         keywords = get_keywords(
                             normalized_content, normalized_title, normalized_description
                         )
+
+                        keywords = get_related_words(keywords)
                     except Exception as e:
                         print(
                             f"Exception occurred while keywords: {url} | {e}")
@@ -651,13 +660,54 @@ def get_page_title(soup):
     try:
         title = soup.title.string if soup.title else None
 
+        # Remove URLs or sequences with non-word characters
+        title = re.sub(r'https?://\S+|www\.\S+|\w*-\w*\.(\w+)', '', title)
+
         if title != None and is_text_english(title):
             return soup.title.string if soup.title else None
-        else:
+        elif title != None:
             return translate_to_english(title)
+        else:
+            return None
 
     except:
-        return ''
+        return None
+
+
+def get_related_words(keywords, topn=2):
+    """
+    Get related words for a given word using the pre-trained GloVe model.
+
+    Parameters:
+    - word (str): The word for which to find related words.
+
+    Returns:
+    - list: A list of related words.
+    """
+    related_keywords = []
+    for word in keywords:
+        if word != "tuebingen" and word != "tübingen":
+            try:
+                # Find related words using GloVe's most_similar method
+                related_words = model.most_similar(word, topn=topn)
+                # Save the search word itself and its related words in the list
+                related_keywords.append(word)
+                related_keywords.extend(
+                    [related_word for related_word, _ in related_words])
+            except KeyError:
+                # Save the search word itself in case of an error
+                related_keywords.append(word)
+
+    # Remove duplicates while preserving the order
+    final_keywords = []
+    for keyword in related_keywords:
+        keyword = normalize_text(keyword)
+        if "https" in keyword or "http" in keyword or "www" in keyword or len(keyword) > 25:
+            continue
+        if keyword not in final_keywords:
+            final_keywords.append(keyword)
+
+    return final_keywords
 
 
 def get_keywords(normalized_content, normalized_title, normalized_description):
@@ -684,7 +734,20 @@ def get_keywords(normalized_content, normalized_title, normalized_description):
     keywords_a = kw_model.extract_keywords(concat, top_n=20)
     keywords = [normalize_text(key[0]) for key in keywords_a]
 
+    # Call get_related_words on each extracted keyword
+    # related_keywords = []
+    # for keyword in keywords:
+    #     related_words = get_related_words(keyword)
+    #     related_keywords.extend([keyword] + related_words)
+
+    # # Remove duplicates while preserving the order
+    # final_keywords = []
+    # for keyword in related_keywords:
+    #     if keyword not in final_keywords:
+    #         final_keywords.append(keyword)
+
     return keywords
+# {cater,foodtruck,sausage,meat,truckscompany,poultry,food,catering,beef,tasty,vegetarian,cateringcalling,cheese,truck,tastefor,truckcatering,truckscatering,eat,festival,salad}
 
 
 def translate_to_english(text):
@@ -735,7 +798,7 @@ def get_description(soup):
         else:
             return translate_to_english(description['content']) if description['content'] else None
     except:
-        return ''
+        return None
 
 
 def has_tuebingen_content(url):
@@ -958,18 +1021,46 @@ def get_page_content(soup):
     Returns:
     - str: content of the web page.
     """
+
+    # Find all div elements
+    div_elements = soup.find_all('div')
+
+    # Remove div elements that contain 'Cookie' or 'cookie' in class, id, or content
+    for div in div_elements:
+        div_content = div.get_text() if div.get_text() else ''
+        if div_content and ('Cookie' in div.get('class', '') or 'cookie' in div.get('class', '') or 'Cookie' in div.get('id', '') or 'cookie' in div.get('id', '')):
+            div.decompose()
+
     # Get the remaining content
     content = str(soup)
 
-    #! lets try our own regex the getText() function returns bullshit
-    # Remove script tags and their content
-    content = re.sub(r'<script[^>]*>[\s\S]*?<\/script>', ' ', content)
+    # Remove all classes and ids
+    content = re.sub(
+        r'(class|id|style|src|height|width|loading|iframe)="[^"]*"', '', content)
 
     # Remove style tags and their content
     content = re.sub(r'<style[^>]*>[\s\S]*?<\/style>', ' ', content)
 
+    # Remove script tags and their content
+    content = re.sub(r'<script[^>]*>[\s\S]*?<\/script>', ' ', content)
+
+    # Remove forms and their content
+    content = re.sub(r'<form[^>]*>[\s\S]*?<\/form>', ' ', content)
+
+    # Remove table and their content
+    content = re.sub(r'<table[^>]*>[\s\S]*?<\/table>', ' ', content)
+
+    # Remove svg tags and their content
+    content = re.sub(r'<svg[^>]*>[\s\S]*?<\/svg>', ' ', content)
+
+    # Remove header tags and their content
+    content = re.sub(r'<header[^>]*>[\s\S]*?<\/header>', ' ', content)
+
     # Remove nav tags and their content
     content = re.sub(r'<nav[^>]*>[\s\S]*?<\/nav>', ' ', content)
+
+    # Remove breadcrumb tags and their content
+    content = re.sub(r'<breadcrumb[^>]*>[\s\S]*?<\/breadcrumb>', ' ', content)
 
     # Remove footer tags and their content
     content = re.sub(r'<footer[^>]*>[\s\S]*?<\/footer>', ' ', content)
@@ -1086,34 +1177,40 @@ def normalize_text(input):
     Returns:
     - str: The normalized text.
     """
-    # Remove special characters and lowercase the content
-    content = re.sub(r'[^\w\s]', '', input).lower()
+    # Check if the title is [null] or empty
+    if input == "[null]" or not input:
+        return None
+    else:
+        # Remove special characters and lowercase the content
+        content = re.sub(r'[^\w\s]', '', input).lower()
 
-    # Normalize German characters to English equivalents
-    content = normalize_german_chars(content)
+        # Normalize German characters to English equivalents
+        content = normalize_german_chars(content)
 
-    # Tokenize the content
-    tokens = word_tokenize(content)
+        # Tokenize the content
+        tokens = word_tokenize(content)
 
-    with wordnet_lock:
-        # Remove stopwords
-        stopwords_set = set(stopwords.words('english'))
-        filtered_tokens = [
-            token for token in tokens if token not in stopwords_set]
+        with wordnet_lock:
 
-        # Get tags on each word
-        token_pos_tags = nltk.pos_tag(filtered_tokens)
-        wordnet_tag = map(lambda x: (x[0], pos_tagger(x[1])), token_pos_tags)
-        lemmatized_content = []
+            # Remove stopwords
+            stopwords_set = set(stopwords.words('english'))
+            filtered_tokens = [
+                token for token in tokens if token not in stopwords_set]
 
-        # Lemmatize the content
-        lemmatizer = WordNetLemmatizer()
+            # Get tags on each word
+            token_pos_tags = nltk.pos_tag(filtered_tokens)
+            wordnet_tag = map(lambda x: (
+                x[0], pos_tagger(x[1])), token_pos_tags)
+            lemmatized_content = []
 
-        for word, tag in wordnet_tag:
-            if tag is None:
-                lemmatized_content.append(word)
-            else:
-                lemmatized_content.append(lemmatizer.lemmatize(word, tag))
+            # Lemmatize the content
+            lemmatizer = WordNetLemmatizer()
 
-    # Convert the lemmatized content back to a string
-    return ' '.join(lemmatized_content)
+            for word, tag in wordnet_tag:
+                if tag is None:
+                    lemmatized_content.append(word)
+                else:
+                    lemmatized_content.append(lemmatizer.lemmatize(word, tag))
+
+            # Convert the lemmatized content back to a string
+            return ' '.join(lemmatized_content)
