@@ -2,7 +2,19 @@ import backend.src.database as database
 import backend.src.web_crawler as web_crawler
 import backend.src.query_handler as query_handler
 import time
+import os
 from flask import Flask, render_template, request
+
+
+# Get the current script's file path
+current_file = os.path.abspath(__file__)
+
+# Get the directory of the current script
+current_directory = os.path.dirname(current_file)
+
+# Go up one level to reach the root folder
+root_folder_path = os.path.dirname(current_directory)
+
 
 app = Flask(__name__)
 
@@ -38,22 +50,21 @@ def home():
         time_start = time.time()
 
         # DATABASE
-        db = database.Database()
-        # db.drop_all_tables()
+        db = database.Database(root_folder_path)
         # db.create_keywords_table()
+        # db.drop_all_tables()  # uncomment this to drop all your databse tables
 
-        # CRAWLER
-        # crawler = src.web_crawler.Crawler(db)
-        # crawler.crawl()
+        # CRAWLER uncomment the
+        crawler = web_crawler.Crawler(db)
         # crawler.create_inout_links()
+        crawler.crawl()  # uncomment this to start crawling the url from the frontier.txt
 
         # QUERY
         query = query_handler.Query(query_text, db)
-        # print(query.prepared_query)
-
         # urls = db.get_all_urls_from_keywords(query.prepared_query)
 
         # returns (doc_id, url, title, description, img, ranking_score)
+        # TODO parse url to get_serach_result() and fetch all the urls corrsponding to the keywords from the search from the database (inverted index)
         query.get_search_results(100)
         search_results = query.search_results
 

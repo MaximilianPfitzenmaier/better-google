@@ -1,18 +1,12 @@
 # better-google
 
 
-install all deps with: `sudo apt-install psycopg2 nltk langdetect bs4 rake_nltk -y`
-
-
-and:
-
-`git clone https://github.com/csurfer/rake-nltk.git`
-`python rake-nltk/setup.py install`
+install all deps with: `pip install -r requirements.txt`
 
 # Database
 
 We're using PostgresSQL.
-To connect, some parameters need to be supplied. Create a local database.txt file in the root of the project which contains host, database, user, password all on a new line. Example in database.py.
+To connect, some parameters need to be supplied. Create a local database.txt file in the root of the project which contains host, database, user, password all on a new line. Example in README in MY SQL
 
 # Frontier
 
