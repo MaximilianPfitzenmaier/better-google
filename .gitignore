@@ -3,6 +3,7 @@
 
 #better-google files
 /backend/data
+/backend/sql/database.txt
 
 settings.json
 /ResultLists
