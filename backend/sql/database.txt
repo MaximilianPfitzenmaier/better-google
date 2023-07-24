@@ -1,4 +1,0 @@
-localhost
-postgres
-postgres
-root
