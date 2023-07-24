@@ -51,13 +51,13 @@ def home():
 
         # DATABASE
         db = database.Database(root_folder_path)
-        # db.create_keywords_table()
         # db.drop_all_tables()  # uncomment this to drop all your databse tables
+        # db.create_keywords_table()
 
         # CRAWLER uncomment the
         crawler = web_crawler.Crawler(db)
-        # crawler.create_inout_links()
         crawler.crawl()  # uncomment this to start crawling the url from the frontier.txt
+        # crawler.create_inout_links()
 
         # QUERY
         query = query_handler.Query(query_text, db)
