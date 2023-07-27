@@ -16,7 +16,8 @@ from nltk.corpus import stopwords, wordnet
 from datetime import datetime
 import threading
 from translate import Translator as TranslateTranslator
-from googletrans import Translator as GoogleTranslator
+from googletrans import Translator as google_translator
+# from google_trans_new import google_translator
 import os
 import gensim.downloader as api
 
@@ -747,15 +748,33 @@ def translate_to_english(text):
     Returns:
     - str: The translated text in English, or an empty string if translation fails.
     """
+    segment_length = 499  # free API
+
     with translation_lock:
         try:
+
             if text is None or not text:
                 return ""
-            else:
-                translator = GoogleTranslator()
-                translation = translator.translate(text, src='de', dest='en')
-                return translation.text
-        except:
+
+            translator = google_translator()
+
+            segments = [text[i:i+segment_length]
+                        for i in range(0, len(text), segment_length)]
+
+            translated_text = ""
+
+            for segment in segments:
+                translated_segment = translator.translate(
+                    segment, src='de', dest='en')
+                if translated_segment is not None and translated_segment.text is not None:
+                    translated_text += translated_segment.text + " "
+                else:
+                    print("Translation failed for segment:", segment)
+
+            return translated_text.strip()
+
+        except Exception as e:
+            print(f"Exception: | {e}")
 
             try:
                 text = str(text)
@@ -1032,6 +1051,9 @@ def get_page_content(soup):
 
     # Remove forms and their content
     content = re.sub(r'<form[^>]*>[\s\S]*?<\/form>', ' ', content)
+
+    # Remove selects and their content
+    content = re.sub(r'<select[^>]*>[\s\S]*?<\/select>', ' ', content)
 
     # Remove table and their content
     content = re.sub(r'<table[^>]*>[\s\S]*?<\/table>', ' ', content)

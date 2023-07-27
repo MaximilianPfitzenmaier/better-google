@@ -44,12 +44,11 @@ def home():
         db = database.Database()
         # db.drop_all_tables()  # uncomment this to drop all your databse tables
         db.create_keywords_table()
-        # db = database.Database()
 
         # CRAWLER
-        # crawler = web_crawler.Crawler(db)
-        # crawler.crawl()  # uncomment this to start crawling the url from the frontier.txt
-        # crawler.create_inout_links()
+        crawler = web_crawler.Crawler(db)
+        crawler.crawl()  # uncomment this to start crawling the urls from the frontier.txt
+        crawler.create_inout_links()
 
         # QUERY
         related = False
