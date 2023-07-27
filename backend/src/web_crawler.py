@@ -1104,7 +1104,8 @@ def get_image_url(soup, url):
     if favicon_tag is not None:
         favicon_url = favicon_tag.get("href", "")
         if favicon_url:
-            favicon_url = urljoin(url, '/')[:-1] + favicon_url
+            favicon_url = favicon_url if favicon_url.startswith(
+                "https://") else urljoin(url, '/')[:-1] + favicon_url
     else:
         favicon_url = "empty"
 
