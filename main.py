@@ -50,25 +50,31 @@ if __name__ == '__main__':
     time_start = time.time()
 
     # DATABASE
-    db = database.Database(root_folder_path)
+    db = database.Database()
     # db.drop_all_tables()  # uncomment this to drop all your databse tables
+    db.create_keywords_table()
+    # db = database.Database()
 
-    # db.create_keywords_table()
-    # db = database.Database(root_folder_path)
-    # CRAWLER uncomment the
+    # CRAWLER
     crawler = web_crawler.Crawler(db)
     # crawler.crawl()  # uncomment this to start crawling the url from the frontier.txt
     # crawler.create_inout_links()
 
     # QUERY
-    query = query_handler.Query('tuebingen', db)
-    # TODO before getting the urls take the query and call get_related_words from web_crawler to pull more pages
-    # urls = db.get_all_urls_from_keywords(query.prepared_query)
+    query_string = "foodtruck cafe"
+    related = False
+    query = query_handler.Query(query_string, db, related)
+    urls = db.get_all_urls_from_keywords(query.prepared_query)
 
     # returns (doc_id, url, title, description, img, ranking_score)
-    # TODO parse url to get_serach_result() and fetch all the urls corrsponding to the keywords from the search from the database (inverted index)
-    query.get_search_results(100)
+    query.get_search_results(20, urls)
     search_results = query.search_results
+
+    if len(search_results) < 1:
+        related = True
+        query = query_handler.Query(query_string, db, related)
+        query.get_search_results(20, urls)
+        search_results = query.search_results
 
     # Calculate the execution time
     time_end = time.time()

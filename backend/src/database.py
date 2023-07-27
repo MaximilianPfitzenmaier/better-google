@@ -7,8 +7,7 @@ class Database:
     connection = None
     cursor = None
 
-    def __init__(self, root_folder_path) -> None:
-        self.root_folder_path = root_folder_path
+    def __init__(self) -> None:
         self.open_database()
         self.create_documents_table()
         self.create_visited_urls_table()
@@ -58,31 +57,23 @@ class Database:
         self.cursor.execute(query)
         return self.cursor.fetchall()
 
-    def fetch_index(self, search_words):
+    def fetch_index(self, urls):
         """
-        Fetch all the indices of documents which contain our search_words somewhere.
+        Fetch all the indices of documents which are in the urls array.
 
         Parameters:
-        - search_words (str[]): An array of strings to search for
+        - urls (str[]): An array of strings to search for
 
         Returns:
         The list of document ids that match our search.
         """
+
         sql = """
-            WITH query_key(key) AS (
-                SELECT unnest(%s)
-                ),
-                doc_key(id, key) AS (
-                    SELECT id, unnest(keywords)
-                    FROM documents
-                )
-            SELECT d.id, d.url, d.title, d.description, d.content, d.img, d.in_links, d.keywords, d.normalized_content
-            FROM documents AS d
-            WHERE d.id IN (SELECT DISTINCT d1.id
-                           FROM doc_key AS d1, query_key AS q
-                           WHERE d1.key ~* q.key);
+            SELECT id, url, title, description, content, img, in_links, keywords, normalized_content
+            FROM documents
+            WHERE url IN %s;
         """
-        self.cursor.execute(sql, (search_words,))
+        self.cursor.execute(sql, (tuple(urls),))
         # print(self.cursor.statusmessage)
         return self.cursor.fetchall()
 
@@ -410,7 +401,6 @@ class Database:
             DROP TABLE IF EXISTS documents;
             DROP TABLE IF EXISTS sitemap;
             DROP TABLE IF EXISTS keywords;
-            DROP TABLE IF EXISTS index;
         """
         self.cursor.execute(sql)
         # print(self.cursor.statusmessage)
@@ -472,11 +462,10 @@ class Database:
         urls_list = []
 
         try:
-            # Fetch URLs for each keyword from the "index" table
-            # Fetch URLs for each keyword from the "index" table
+            # Fetch URLs for each keyword from the "keywords" table
             for keyword in keywords:
                 self.cursor.execute(
-                    "SELECT urls FROM index WHERE keyword = %s;", (keyword,))
+                    "SELECT urls FROM keywords WHERE keyword = %s;", (keyword,))
                 rows = self.cursor.fetchall()
                 for row in rows:
                     urls_list.extend(row[0])

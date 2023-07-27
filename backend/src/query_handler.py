@@ -14,9 +14,10 @@ class Query:
     index = []
     search_results = []
 
-    def __init__(self, user_query, db) -> None:
+    def __init__(self, user_query, db, related) -> None:
         self.db = db
         self.user_query = user_query
+        self.related = related
 
         # Normalize and lemmatize the query
         temp_query = web_crawler.normalize_text(self.user_query)
@@ -30,15 +31,20 @@ class Query:
         # Convert the set back to a list to preserve the order
         unique_words_list = list(unique_words_set)
 
+        # call get_related_words to get more if no results where found for the query
+        if (related):
+            unique_words_list = web_crawler.get_related_words(
+                unique_words_list, topn=2)
+
         # Join the unique words back into a string
         result_string = ' '.join(unique_words_list)
         self.prepared_query = result_string
 
-    def get_index(self) -> None:
+    def get_index(self, urls) -> None:
         """
         Creates the index on which we can further select our results later on
         """
-        self.index = self.db.fetch_index(self.prepared_query.split(' '))
+        self.index = self.db.fetch_index(urls)
 
     def link_based_ranking(self):
         """
@@ -153,7 +159,7 @@ class Query:
 
         return document_scores
 
-    def get_search_results(self, amount):
+    def get_search_results(self, amount, urls):
         """
         Gets the top #amount search results from our database and ranks them based on multiple factors:
         In-link, tf-idf score and query-likelihood.
@@ -164,7 +170,7 @@ class Query:
         Returns:
         The list of search results
         """
-        self.get_index()
+        self.get_index(urls)
 
         if len(self.index) == 0:
             self.search_results = []
