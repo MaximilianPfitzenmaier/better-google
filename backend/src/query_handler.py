@@ -190,8 +190,19 @@ class Query:
         # Set the results
         self.search_results = self.index[:amount]
 
+        current_file = os.path.abspath(__file__)
+
+        # Get the parent directory of the file (one folder up)
+        this_folder = os.path.dirname(current_file)
+
+        # Get the parent directory of the file's parent directory (two folders up)
+        one_folders_up = os.path.dirname(this_folder)
+
+        two_folders_up = os.path.dirname(one_folders_up)
+
         # save results to file
-        result_dir = os.path.join(os.getcwd(), 'ResultLists')
+        result_dir = os.path.join(two_folders_up, 'resultLists')
+
         if not os.path.exists(result_dir):
             os.makedirs(result_dir)
         os.chdir(result_dir)

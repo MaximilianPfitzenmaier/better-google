@@ -51,12 +51,13 @@ if __name__ == '__main__':
 
     # DATABASE
     db = database.Database(root_folder_path)
-    db.drop_all_tables()  # uncomment this to drop all your databse tables
+    # db.drop_all_tables()  # uncomment this to drop all your databse tables
+
     # db.create_keywords_table()
-    db = database.Database(root_folder_path)
+    # db = database.Database(root_folder_path)
     # CRAWLER uncomment the
     crawler = web_crawler.Crawler(db)
-    crawler.crawl()  # uncomment this to start crawling the url from the frontier.txt
+    # crawler.crawl()  # uncomment this to start crawling the url from the frontier.txt
     # crawler.create_inout_links()
 
     # QUERY
