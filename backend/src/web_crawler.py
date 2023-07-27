@@ -686,17 +686,16 @@ def get_related_words(keywords, topn=2):
     """
     related_keywords = []
     for word in keywords:
-        if word != "tuebingen" and word != "tübingen":
-            try:
-                # Find related words using GloVe's most_similar method
-                related_words = model.most_similar(word, topn=topn)
-                # Save the search word itself and its related words in the list
-                related_keywords.append(word)
-                related_keywords.extend(
-                    [related_word for related_word, _ in related_words])
-            except KeyError:
-                # Save the search word itself in case of an error
-                related_keywords.append(word)
+        try:
+            # Find related words using GloVe's most_similar method
+            related_words = model.most_similar(word, topn=topn)
+            # Save the search word itself and its related words in the list
+            related_keywords.append(word)
+            related_keywords.extend(
+                [related_word for related_word, _ in related_words])
+        except KeyError:
+            # Save the search word itself in case of an error
+            related_keywords.append(word)
 
     # Remove duplicates while preserving the order
     final_keywords = []
@@ -734,20 +733,7 @@ def get_keywords(normalized_content, normalized_title, normalized_description):
     keywords_a = kw_model.extract_keywords(concat, top_n=20)
     keywords = [normalize_text(key[0]) for key in keywords_a]
 
-    # Call get_related_words on each extracted keyword
-    # related_keywords = []
-    # for keyword in keywords:
-    #     related_words = get_related_words(keyword)
-    #     related_keywords.extend([keyword] + related_words)
-
-    # # Remove duplicates while preserving the order
-    # final_keywords = []
-    # for keyword in related_keywords:
-    #     if keyword not in final_keywords:
-    #         final_keywords.append(keyword)
-
     return keywords
-# {cater,foodtruck,sausage,meat,truckscompany,poultry,food,catering,beef,tasty,vegetarian,cateringcalling,cheese,truck,tastefor,truckcatering,truckscatering,eat,festival,salad}
 
 
 def translate_to_english(text):

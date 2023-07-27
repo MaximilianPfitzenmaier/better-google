@@ -67,15 +67,17 @@ class Database:
         Returns:
         The list of document ids that match our search.
         """
-
-        sql = """
-            SELECT id, url, title, description, content, img, in_links, keywords, normalized_content
-            FROM documents
-            WHERE url IN %s;
-        """
-        self.cursor.execute(sql, (tuple(urls),))
-        # print(self.cursor.statusmessage)
-        return self.cursor.fetchall()
+        try:
+            sql = """
+                SELECT id, url, title, description, content, img, in_links, keywords, normalized_content
+                FROM documents
+                WHERE url IN %s;
+            """
+            self.cursor.execute(sql, (tuple(urls),))
+            # print(self.cursor.statusmessage)
+            return self.cursor.fetchall()
+        except:
+            return []
 
     def add_document(self, element):
         """
